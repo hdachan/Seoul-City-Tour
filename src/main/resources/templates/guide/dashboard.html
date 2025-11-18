@@ -7,67 +7,40 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/css/datepicker.min.css" rel="stylesheet">
     <style>
-        /* 너가 준 CSS 그대로 100% 사용 */
         body { background:#f8f9fa; padding:15px; }
         .btn-logout { position:fixed; top:10px; right:10px; z-index:1050; font-size:0.8rem; }
         .btn-main { height:60px; font-size:1rem; }
-        .control-panel { display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
-        .table { font-size:0.85rem; }
-        th, td { white-space:nowrap; }
-        .table-responsive { overflow-x:auto; }
-        td { font-size:0.75rem; padding:4px; }
-        @media (max-width:576px) { th,td { font-size:0.7rem; } }
-
-        @media print {
-            .no-print { display:none !important; }
-            body { background:white; padding:0; margin:0; }
-            .container-fluid { padding:10mm; }
-            .print-area { display:block !important; }
-            .print-area table { font-size:11px; line-height:1.2; width:100%; }
-            .print-area th, .print-area td { border:1px solid #888 !important; padding:4px 6px; }
-            .print-area th { background:#f0f0f0 !important; }
-        }
-
-        .print-area { display:none; }
-        .datepicker-cell.has-data::after {
-            content:"•"; color:#0d6efd; font dot; position:absolute; top:2px; right:2px; font-size:12px;
-        }
         .today-count { background:#e3f2fd; border:1px solid #bbdefb; border-radius:8px; padding:8px 12px; font-size:0.9rem; text-align:center; margin:10px 0; color:#1976d2; font-weight:500; }
+        @media print { .no-print { display:none !important; } .print-area { display:block !important; } body { background:white; } }
+        .print-area { display:none; }
     </style>
 </head>
 <body>
 <div class="container-fluid px-3">
     <div class="no-print">
         <a href="/guide/logout" class="btn btn-outline-danger btn-sm btn-logout">로그아웃</a>
-
-        <h3 class="text-center mt-4 mb-1 text-primary fs-5" th:text="${guide.name} + ' 가이드님'"></h3>
+        <h3 class="text-center mt-4 text-primary" th:text="${guide.name} + ' 가이드님'"></h3>
         <p class="text-center text-muted small mb-3">환영합니다</p>
 
-        <div class="today-count">오늘 방문자 수: <span id="countValue">-</span>명</div>
+        <div class="today-count">오늘 방문자 수: <span id="countValue">로딩중...</span>명</div>
 
         <div class="row mt-3 g-2">
             <div class="col-12">
-                <a th:href="@{/tourist/register}" class="btn btn-success w-100 btn-main d-flex align-items-center justify-content-center gap-2 shadow-sm">
-                    <span class="fw-semibold">관광객 등록 폼 열기</span>
-                </a>
+                <a th:href="@{/tourist/register}" class="btn btn-success w-100 btn-main shadow-sm">관광객 등록 폼 열기</a>
             </div>
         </div>
 
-        <div class="mt-4">
-            <div class="control-panel">
-                <input type="text" id="filterDate" class="form-control form-control-sm" style="width:130px;" placeholder="날짜" readonly>
-                <button type="button" id="btnSearch" class="btn btn-primary btn-sm">조회</button>
-                <button type="button" id="btnPrint" class="btn btn-secondary btn-sm">출력</button>
-            </div>
+        <div class="mt-4 control-panel">
+            <input type="text" id="filterDate" class="form-control form-control-sm" style="width:130px;" placeholder="날짜" readonly>
+            <button id="btnSearch" class="btn btn-primary btn-sm">조회</button>
+            <button id="btnPrint" class="btn btn-secondary btn-sm">출력</button>
         </div>
     </div>
 
     <div class="no-print"><div id="touristList"></div></div>
     <div class="print-area">
-        <div class="text-center mb-4">
-            <h4 th:text="${guide.name} + ' 가이드님 관광객 명단'"></h4>
-            <p id="printDateLabel" class="text-muted small"></p>
-        </div>
+        <h4 class="text-center" th:text="${guide.name} + ' 가이드님 관광객 명단'"></h4>
+        <p id="printDateLabel" class="text-center text-muted small"></p>
         <div id="printTable"></div>
     </div>
 </div>
@@ -77,58 +50,57 @@
 <script th:inline="javascript">
     const guideId = /*[[${guide.id}]]*/ null;
 
-    document.getElementById('countValue').innerText = '로딩중...';
-
     async function loadTourists(date = '') {
         const url = date ? `/api/tourists?date=${date}&guideId=${guideId}` : `/api/tourists?guideId=${guideId}`;
         const res = await fetch(url);
-        const tourists = await res.json();
+        const data = await res.json();
 
-        // 오늘 카운트
         const today = new Date().toISOString().slice(0,10);
-        const todayCount = tourists.filter(t => t.time.startsWith(today)).length;
+        const todayCount = data.filter(t => t.time.startsWith(today)).length;
         document.getElementById('countValue').innerText = todayCount;
 
-        renderTable(tourists.filter(t => !date || t.time.startsWith(date)), 'touristList');
-        renderTable(tourists.filter(t => !date || t.time.startsWith(date)), 'printTable');
+        const filtered = date ? data.filter(t => t.time.startsWith(date)) : data;
+        renderTable(filtered, 'touristList');
+        renderTable(filtered, 'printTable');
     }
 
     function renderTable(data, containerId) {
-        let html = data.length === 0
-            ? `<p class="text-center text-muted small">등록된 관광객이 없습니다.</p>`
+        const html = data.length === 0
+            ? `<p class="text-center text-muted">등록된 관광객이 없습니다.</p>`
             : `<div class="table-responsive"><table class="table table-striped table-sm table-bordered">
           <thead class="table-light"><tr><th>#</th><th>이름</th><th>생년월일</th><th>전화</th><th>국적</th><th>성별</th><th>시간</th></tr></thead>
-          <tbody>` +
-            data.map((t, i) => `<tr>
-              <td>${i+1}</td>
-              <td>${t.name}</td>
-              <td>${t.birth}</td>
-              <td>${t.phone || '-'}</td>
-              <td>${t.country || '-'}</td>
-              <td>${t.gender === 'MALE' ? '남' : '여'}</td>
-              <td>${new Date(t.time).toLocaleString('ko-KR', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</td>
-            </tr>`).join('') +
-            `</tbody></table></div>`;
+          <tbody>${data.map((t,i) => `<tr>
+            <td>${i+1}</td><td>${t.name}</td><td>${t.birth}</td>
+            <td>${t.phone || '-'}</td><td>${t.country || '-'}</td>
+            <td>${t.gender === 'MALE' ? '남' : '여'}</td>
+            <td>${new Date(t.time).toLocaleString('ko-KR', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</td>
+          </tr>`).join('')}</tbody></table></div>`;
         document.getElementById(containerId).innerHTML = html;
     }
 
-    // 초기 로드
-    loadTourists();
+    // 여기만 바꿈! 달력 초기화 + 오늘 날짜 자동 입력
+    const today = new Date().toISOString().slice(0,10);
+    const dateInput = document.getElementById('filterDate');
 
-    // 날짜 선택
-    new Datepicker(document.getElementById('filterDate'), {
+    new Datepicker(dateInput, {
         format: 'yyyy-mm-dd',
         language: 'ko',
-        autohide: true
+        autohide: true,
+        todayHighlight: true   // 오늘 날짜 하이라이트
     });
+
+    // 오늘 날짜 자동 입력
+    dateInput.value = today;
 
     document.getElementById('btnSearch').onclick = () => {
         const date = document.getElementById('filterDate').value;
-        loadTourists(date);
-        document.getElementById('printDateLabel').innerText = date ? `기준일: ${date.replace(/-/g, '. ')}` : '전체 기간';
+        loadTourists(date || '');
+        document.getElementById('printDateLabel').innerText = date ? '기준일: ' + date.replace(/-/g, '. ') : '전체 기간';
     };
+    document.getElementById('btnPrint').onclick = () => setTimeout(window.print, 300);
 
-    document.getElementById('btnPrint').onclick = () => setTimeout(() => window.print(), 300);
+    // 처음 로드할 때도 오늘 기준으로 데이터 가져오게 (선택 사항, 원하면 주석 처리)
+    loadTourists(today);
 </script>
 </body>
 </html>

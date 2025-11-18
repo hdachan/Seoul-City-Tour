@@ -13,20 +13,23 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                // CSRF 끄기 (API + 세션 로그인 쓰니까 필수)
                 .csrf(csrf -> csrf.disable())
+
+                // 모든 요청 허용 (우리가 직접 세션으로 로그인 관리함)
                 .authorizeHttpRequests(auth -> auth
-                        // 누구나 접근 가능
-                        .requestMatchers("/", "/login", "/guide/login", "/guide/logout",
-                                "/css/**", "/js/**", "/images/**", "/error").permitAll()
-
-                        // 가이드 관련 전부 허용 (우리가 세션으로 직접 관리)
-                        .requestMatchers("/guide/**").permitAll()
-
-                        .anyRequest().authenticated()
+                        .anyRequest().permitAll()   // ← 이 한 줄이 핵심!
                 )
-                // Spring Security 기본 로그인 완전 꺼버림
+
+                // Spring Security 기본 로그인 완전 비활성화
                 .formLogin(form -> form.disable())
-                .logout(logout -> logout.disable());
+                .httpBasic(basic -> basic.disable())
+                .logout(logout -> logout.disable())
+
+                // 세션은 우리가 직접 관리하니까 정책 변경
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(org.springframework.security.config.http.SessionCreationPolicy.ALWAYS)
+                );
 
         return http.build();
     }

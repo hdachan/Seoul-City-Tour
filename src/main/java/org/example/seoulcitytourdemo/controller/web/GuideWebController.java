@@ -40,11 +40,10 @@ public class GuideWebController {
 
         model.addAttribute("guide", guide);
 
-        // admin 계정은 관리자 페이지, 나머지는 일반 가이드 페이지
         if ("admin".equals(guide.getLoginId())) {
-            return "admin/dashboard";   // templates/admin/dashboard.html
+            return "admin/dashboard";   // 관리자 전용 화면
         } else {
-            return "guide/dashboard";   // templates/guide/dashboard.html
+            return "guide/dashboard";   // 일반 가이드 화면
         }
     }
 

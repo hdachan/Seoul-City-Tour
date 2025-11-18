@@ -8,8 +8,7 @@ import java.util.UUID;
 
 @Entity
 @Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
-@Builder
+@NoArgsConstructor @AllArgsConstructor @Builder
 @Table(name = "tourists")
 public class Tourist {
 
@@ -18,21 +17,23 @@ public class Tourist {
     @Column(columnDefinition = "binary(16)", nullable = false)
     private UUID id;
 
-    @ManyToOne
-    @JoinColumn(name = "guide_id", columnDefinition = "binary(16)")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "guide_id", columnDefinition = "binary(16)", nullable = false)
     private Guide guide;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private String name;
 
     @Column(nullable = false)
     private LocalDate birth;
 
     private String phone;
+
     private String country;
 
-    @Column(nullable = false)
-    private String gender;
+    @Column(nullable = false, length = 10)
+    private String gender; // MALE / FEMALE
 
+    @Column(nullable = false)
     private OffsetDateTime time = OffsetDateTime.now();
 }
