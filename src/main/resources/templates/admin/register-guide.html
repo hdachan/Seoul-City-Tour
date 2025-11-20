@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <title>가이드 등록</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #fff; font-family: 'Poppins', sans-serif; }
+        .container { max-width: 1100px; }
+        .btn-success { background: #467FF7; border: none; border-radius: 50px; padding: 12px 30px; }
+        .table thead { background: #467FF7; color: #fff; }
+        .table th, .table td { font-size: 0.9rem; vertical-align: middle; }
+        .password-wrapper { position: relative; display: inline-block; min-width: 90px; }
+        .password-hidden { user-select: none; }
+        .btn-link { color: #467FF7; font-size: 0.75rem; }
+        .member-count { cursor: pointer; color: #467FF7; font-weight: bold; }
+        .member-count:hover { text-decoration: underline; }
+        .qr-div { width: 100px; height: 100px; margin: 8px auto; }
+        @media (max-width: 767px) {
+            .table { font-size: 0.8rem; }
+            .qr-div { width: 80px; height: 80px; }
+        }
+    </style>
+</head>
+<body class="p-3">
+<div class="container">
+    <div class="text-center mb-4">
+        <button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#guideModal">
+            가이드 등록하기
+        </button>
+    </div>
+    <hr>
+    <div id="guideList">로딩 중...</div>
+</div>
+
+<!-- 가이드 등록 모달 -->
+<div class="modal fade" id="guideModal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">가이드 정보 등록</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="guideForm" class="row g-3">
+                    <div class="col-md-6"><label>로그인 ID <span class="text-danger">*</span></label><input type="text" class="form-control" id="loginId" required placeholder="guide123"></div>
+                    <div class="col-md-6"><label>비밀번호 <span class="text-danger">*</span></label><input type="password" class="form-control" id="guidePassword" required></div>
+                    <div class="col-md-6"><label>이름 <span class="text-danger">*</span></label><input type="text" class="form-control" id="guideName" required placeholder="김가이드"></div>
+                    <div class="col-md-6"><label>생년월일 <span class="text-danger">*</span></label><input type="date" class="form-control" id="guideBirth" required></div>
+                    <div class="col-md-6"><label>전화번호</label><input type="tel" class="form-control" id="guidePhone" placeholder="010-1234-5678"></div>
+                    <div class="col-md-6"><label>지역 (국적)</label><input type="text" class="form-control" id="guideNationality" placeholder="한국"></div>
+                    <div class="col-md-6"><label>성별</label>
+                        <select class="form-select" id="guideGender">
+                            <option value="남">남성</option>
+                            <option value="여">여성</option>
+                        </select>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-success">등록하기</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    const API = '/api/guides';
+    const BASE = location.origin;
+
+    async function loadGuides() {
+        const res = await fetch(API);
+        const guides = await res.json();
+
+        if (guides.length === 0) {
+            document.getElementById('guideList').innerHTML = '<p class="text-center text-muted fs-4">등록된 가이드가 없습니다.</p>';
+            return;
+        }
+
+        let html = `<div class="table-responsive">
+      <table class="table table-bordered table-hover">
+        <thead><tr>
+          <th>No</th><th>로그인ID</th><th>이름</th><th>비밀번호</th>
+          <th>생년월일</th><th>전화번호</th><th>지역</th><th>성별</th>
+          <th>등록된<br>관광객</th><th>QR 코드</th><th>작업</th>
+        </tr></thead><tbody>`;
+
+        guides.forEach((g, i) => {
+            const registerUrl = `${BASE}/tourist/register?guideId=${g.id}`;
+            const qrId = `qr_${g.id}`;
+            html += `<tr>
+        <td><strong>${i + 1}</strong></td>
+        <td><strong>${g.loginId}</strong></td>
+        <td><strong>${g.name}</strong></td>
+        <td>
+          <div class="password-wrapper">
+            <span id="pw_${g.id}" class="password-hidden">••••••••</span>
+            <button class="btn btn-sm btn-link position-absolute end-0 top-50 translate-middle-y"
+                    style="font-size:0.7rem;" onclick="togglePw('${g.id}', '${g.password}')">시야</button>
+          </div>
+        </td>
+        <td>${g.birth}</td>
+        <td>${g.phone || '-'}</td>
+        <td>${g.nationality || '-'}</td>
+        <td>${g.gender === 'MALE' ? '남' : '여'}</td>
+        <td class="text-center member-count" onclick="location.href='/guide/dashboard?guideId=${g.id}'">
+          ${g.touristCount}명
+        </td>
+        <td class="text-center">
+          <a href="${registerUrl}" target="_blank" class="btn btn-sm btn-outline-primary d-block mb-2">폼 열기</a>
+          <div id="${qrId}" class="qr-div"></div>
+        </td>
+        <td class="text-center">
+          <button class="btn btn-sm btn-danger" onclick="deleteGuide('${g.id}')">삭제</button>
+        </td>
+      </tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+        document.getElementById('guideList').innerHTML = html;
+
+        // QR 생성
+        guides.forEach(g => {
+            new QRCode(document.getElementById(`qr_${g.id}`), {
+                text: `${BASE}/tourist/register?guideId=${g.id}`,
+                width: 100, height: 100, correctLevel: QRCode.CorrectLevel.H
+            });
+        });
+    }
+
+    // 비밀번호 보기 토글
+    window.togglePw = function(id, realPw) {
+        const el = document.getElementById('pw_' + id);
+        el.textContent = el.textContent === '••••••••' ? realPw : '••••••••';
+    };
+
+    // 가이드 등록
+    document.getElementById('guideForm').onsubmit = async e => {
+        e.preventDefault();
+        const data = {
+            loginId: document.getElementById('loginId').value.trim(),
+            password: document.getElementById('guidePassword').value,
+            name: document.getElementById('guideName').value.trim(),
+            birth: document.getElementById('guideBirth').value,
+            phone: document.getElementById('guidePhone').value.trim() || null,
+            nationality: document.getElementById('guideNationality').value.trim() || null,
+            gender: document.getElementById('guideGender').value
+        };
+
+        const check = await fetch(`${API}/check-id?loginId=${data.loginId}`);
+        if (await check.json()) return alert('이미 사용 중인 로그인 ID입니다.');
+
+        const res = await fetch(`${API}/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            alert('가이드 등록 완료!');
+            bootstrap.Modal.getInstance(document.getElementById('guideModal')).hide();
+            e.target.reset();
+            loadGuides();
+        } else {
+            alert('등록 실패: ' + await res.text());
+        }
+    };
+
+    // 가이드 삭제
+    window.deleteGuide = async id => {
+        if (!confirm('정말 삭제하시겠습니까?\n연결된 모든 관광객 데이터도 함께 삭제됩니다.')) return;
+        await fetch(`${API}/${id}`, { method: 'DELETE' });
+        loadGuides();
+    };
+
+    // 시작!
+    loadGuides();
+</script>
+</body>
+</html>
