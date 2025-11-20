@@ -17,8 +17,9 @@ public class Tourist {
     @Column(columnDefinition = "binary(16)", nullable = false)
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "guide_id", columnDefinition = "binary(16)", nullable = false)
+    // 이 부분만 수정! nullable = false 삭제 + optional = true 추가
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "guide_id", columnDefinition = "binary(16)")
     private Guide guide;
 
     @Column(nullable = false, length = 50)

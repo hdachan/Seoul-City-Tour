@@ -17,7 +17,7 @@
 
 <div class="card">
     <div class="card-header header text-center d-flex justify-content-between align-items-center px-3">
-        <h4 id="guideName" class="mb-0" th:text="${guide.name} + ' 가이드님 단체'">로딩중...</h4>
+        <h4 id="guideName" class="mb-0" th:text="${guide?.name} + ' 가이드님 단체'">로딩중...</h4>
         <select id="langSelect" class="form-select form-select-sm lang-select">
             <option value="ko">한국어</option>
             <option value="en">English</option>
@@ -27,7 +27,8 @@
 
     <div class="card-body">
         <form id="touristForm">
-            <input type="hidden" th:value="${guide.id}" id="guideId">
+            <!-- guideId는 URL 파라미터 우선, 없으면 Thymeleaf 값 사용 -->
+            <input type="hidden" id="guideId" th:value="${param.guideId} ?: ${guide?.id}">
 
             <div class="mb-3">
                 <label class="form-label" id="labelName">이름 <span class="text-danger">*</span></label>
@@ -52,8 +53,8 @@
             <div class="mb-3">
                 <label class="form-label" id="labelGender">성별</label>
                 <select class="form-select" id="gender">
-                    <option value="MALE">남성</option>
-                    <option value="FEMALE">여성</option>
+                    <option value="MALE">남</option>
+                    <option value="FEMALE">여</option>
                 </select>
             </div>
 
@@ -68,7 +69,7 @@
 
 <script>
     const texts = {
-        ko: { name: "이름", birth: "생년월일", phone: "전화번호", country: "국적", gender: "성별", male: "남성", female: "여성", submit: "등록 완료", success: "등록 완료!", error: "등록 실패", placeholderCountry: "중국" },
+        ko: { name: "이름", birth: "생년월일", phone: "전화번호", country: "국적", gender: "성별", male: "남", female: "여", submit: "등록 완료", success: "등록 완료!", error: "등록 실패", placeholderCountry: "중국" },
         en: { name: "Name", birth: "Date of Birth", phone: "Phone", country: "Nationality", gender: "Gender", male: "Male", female: "Female", submit: "Register", success: "Success!", error: "Failed", placeholderCountry: "China" },
         zh: { name: "姓名", birth: "出生日期", phone: "电话", country: "国籍", gender: "性别", male: "男", female: "女", submit: "完成注册", success: "注册成功！", error: "注册失败", placeholderCountry: "中国" }
     };
@@ -76,6 +77,26 @@
     let lang = 'ko';
     const urlParams = new URLSearchParams(location.search);
     if (['en','zh'].includes(urlParams.get('lang'))) lang = urlParams.get('lang');
+
+    // 핵심: 페이지 로드 시 guideId 강제 보장
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('guideId');
+        const urlGuideId = urlParams.get('guideId');
+
+        // 1. URL에 guideId 있으면 강제 주입
+        if (urlGuideId && urlGuideId.trim()) {
+            input.value = urlGuideId.trim();
+        }
+
+        // 2. 그래도 비어있으면 접근 차단
+        if (!input.value || input.value.trim() === '' || input.value === 'null') {
+            document.getElementById('result').innerHTML =
+                '<div class="alert alert-danger text-center"><strong>오류:</strong> QR 코드를 통해 접근해주세요.</div>';
+            document.getElementById('touristForm').style.display = 'none';
+            document.querySelector('.card-header').insertAdjacentHTML('beforeend',
+                '<div class="alert alert-warning mt-2 mb-0">잘못된 접근입니다</div>');
+        }
+    });
 
     function applyLang(l) {
         lang = l;
@@ -89,22 +110,32 @@
         document.getElementById('country').placeholder = t.placeholderCountry;
 
         const opts = document.getElementById('gender').options;
-        opts[0].text = t.male; opts[0].value = l === 'en' ? 'Male' : (l === 'zh' ? '男' : '남');
-        opts[1].text = t.female; opts[1].value = l === 'en' ? 'Female' : (l === 'zh' ? '女' : '여');
+        opts[0].text = t.male; opts[0].value = "MALE";
+        opts[1].text = t.female; opts[1].value = "FEMALE";
 
-        history.replaceState(null, '', location.pathname + '?lang=' + l);
+        const newUrl = new URL(location);
+        newUrl.searchParams.set('lang', l);
+        history.replaceState(null, '', newUrl);
     }
 
     document.getElementById('langSelect').value = lang;
     document.getElementById('langSelect').onchange = (e) => applyLang(e.target.value);
     applyLang(lang);
 
+    // 핵심: 백엔드가 String guideId를 받도록 전송 형식 변경
     document.getElementById('touristForm').onsubmit = async (e) => {
         e.preventDefault();
         const t = texts[lang];
 
-        const tourist = {
-            guide: { id: document.getElementById('guideId').value },
+        const guideId = document.getElementById('guideId').value.trim();
+        if (!guideId || guideId === 'null') {
+            document.getElementById('result').innerHTML =
+                `<div class="alert alert-danger text-center">가이드 정보가 없습니다.</div>`;
+            return;
+        }
+
+        const payload = {
+            guideId: guideId,           // ← 이게 핵심! (기존 guide: { id: ... } 아님!)
             name: document.getElementById('name').value.trim(),
             birth: document.getElementById('birth').value,
             phone: document.getElementById('phone').value.trim() || null,
@@ -112,18 +143,24 @@
             gender: document.getElementById('gender').value
         };
 
-        const res = await fetch('/api/tourists/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(tourist)
-        });
+        try {
+            const res = await fetch('/api/tourists/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        const result = document.getElementById('result');
-        if (res.ok) {
-            result.innerHTML = `<div class="alert alert-success text-center">${t.success}</div>`;
-            e.target.reset();
-        } else {
-            result.innerHTML = `<div class="alert alert-danger text-center">${t.error}</div>`;
+            const result = document.getElementById('result');
+            if (res.ok) {
+                result.innerHTML = `<div class="alert alert-success text-center">${t.success}</div>`;
+                e.target.reset();
+            } else {
+                const msg = await res.text();
+                result.innerHTML = `<div class="alert alert-danger text-center">${msg || t.error}</div>`;
+            }
+        } catch (err) {
+            document.getElementById('result').innerHTML =
+                `<div class="alert alert-danger text-center">네트워크 오류</div>`;
         }
     };
 </script>

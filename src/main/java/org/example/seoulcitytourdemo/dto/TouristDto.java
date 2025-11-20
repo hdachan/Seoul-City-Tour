@@ -1,51 +1,59 @@
 package org.example.seoulcitytourdemo.dto;
 
 import org.example.seoulcitytourdemo.entity.Tourist;
+
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public record TouristDto(
         UUID id,
-        String guideName,        // 관리자용 추가 필드
+
+        // 가이드 정보
+        String guideName,
+        String guideBirth,        // String으로 받음 (yyyy-MM-dd 형식)
+        String guidePhone,
+        String guideNationality,
+        String guideGender,
+
+        // 관광객 정보
         String name,
-        LocalDate birth,
+        String birth,             // 여기도 String으로 변경 (기존과 동일하게)
         String phone,
         String country,
-        String gender,           // ← "남"/"여" 또는 "MALE"/"FEMALE" 전달
+        String gender,
         OffsetDateTime time
 ) {
-    // 기존 가이드용 API (기존 동작 그대로 유지)
+    // 가이드용 (기존 그대로)
     public static TouristDto from(Tourist t) {
         return new TouristDto(
                 t.getId(),
-                null,  // guideName은 null → 기존 가이드 앱에 영향 없음
+                t.getGuide().getName(),
+                null, null, null, null,
                 t.getName(),
-                t.getBirth(),
+                t.getBirth() != null ? t.getBirth().toString() : null,  // LocalDate → String
                 t.getPhone(),
                 t.getCountry(),
-                t.getGender(),  // 그대로 "MALE" 또는 "FEMALE" 전달 → 기존 가이드 앱 완벽 동작
+                t.getGender(),
                 t.getTime()
         );
     }
 
-    // 관리자 전용: 가이드 이름 + 성별을 "남"/"여"로 변환해서 보여줌
-    public static TouristDto fromWithGuideName(Tourist t) {
-        String guideName = t.getGuide() != null ? t.getGuide().getName() : "알수없음";
-
-        String displayGender = null;
-        if (t.getGender() != null) {
-            displayGender = "MALE".equalsIgnoreCase(t.getGender()) ? "남" : "여";
-        }
-
+    // 관리자용 전체 조회 → 가이드 상세 정보 포함
+    public static TouristDto fromWithGuideInfo(Tourist t) {
+        var guide = t.getGuide();
         return new TouristDto(
                 t.getId(),
-                guideName,
+                guide.getName(),
+                guide.getBirth() != null ? guide.getBirth().toString() : null,
+                guide.getPhone(),
+                guide.getNationality(),
+                guide.getGender(),
                 t.getName(),
-                t.getBirth(),
+                t.getBirth() != null ? t.getBirth().toString() : null,  // 여기 고침!
                 t.getPhone(),
                 t.getCountry(),
-                displayGender,  // 관리자 화면에서는 "남"/"여"로 보여줌
+                t.getGender(),
                 t.getTime()
         );
     }

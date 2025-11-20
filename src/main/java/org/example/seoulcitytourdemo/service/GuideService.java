@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.example.seoulcitytourdemo.dto.GuideDto;
 import org.example.seoulcitytourdemo.dto.GuideRegisterRequest;
 import org.example.seoulcitytourdemo.entity.Guide;
-
 import org.example.seoulcitytourdemo.repository.GuideRepository;
 import org.example.seoulcitytourdemo.repository.TouristRepository;
 import org.springframework.data.domain.Sort;
@@ -28,7 +27,6 @@ public class GuideService {
     }
 
     // ===== 관리자 기능 =====
-
     public boolean existsByLoginId(String loginId) {
         return guideRepository.findByLoginId(loginId).isPresent();
     }
@@ -49,7 +47,6 @@ public class GuideService {
     @Transactional(readOnly = true)
     public List<GuideDto> getAllGuidesWithTouristCount() {
         List<Guide> guides = guideRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
-
         return guides.stream()
                 .map(g -> GuideDto.from(g, touristRepository.countByGuideId(g.getId())))
                 .toList();
@@ -57,7 +54,13 @@ public class GuideService {
 
     @Transactional
     public void deleteGuide(UUID id) {
-        touristRepository.deleteByGuideId(id);  // 연결된 관광객 모두 삭제
+        touristRepository.deleteByGuideId(id);
         guideRepository.deleteById(id);
+    }
+
+    // 이 메서드 추가! (QR 코드로 접근할 때 필요)
+    public Guide findById(UUID id) {
+        return guideRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 ID의 가이드를 찾을 수 없습니다: " + id));
     }
 }
