@@ -91,6 +91,8 @@
         guides.forEach((g, i) => {
             const registerUrl = `${BASE}/tourist/register?guideId=${g.id}`;
             const qrId = `qr_${g.id}`;
+            const encodedName = encodeURIComponent(g.name);
+
             html += `<tr>
         <td><strong>${i + 1}</strong></td>
         <td><strong>${g.loginId}</strong></td>
@@ -106,8 +108,9 @@
         <td>${g.phone || '-'}</td>
         <td>${g.nationality || '-'}</td>
         <td>${g.gender === 'MALE' ? '남' : '여'}</td>
-        <td class="text-center member-count" onclick="location.href='/guide/dashboard?guideId=${g.id}'">
-          ${g.touristCount}명
+        <td class="text-center member-count"
+            onclick="window.open('/admin/guide-tourists.html?guideId=${g.id}&name=${encodedName}', '_blank')">
+          <strong>${g.touristCount}명</strong>
         </td>
         <td class="text-center">
           <a href="${registerUrl}" target="_blank" class="btn btn-sm btn-outline-primary d-block mb-2">폼 열기</a>
@@ -131,13 +134,11 @@
         });
     }
 
-    // 비밀번호 보기 토글
     window.togglePw = function(id, realPw) {
         const el = document.getElementById('pw_' + id);
         el.textContent = el.textContent === '••••••••' ? realPw : '••••••••';
     };
 
-    // 가이드 등록
     document.getElementById('guideForm').onsubmit = async e => {
         e.preventDefault();
         const data = {
@@ -169,14 +170,12 @@
         }
     };
 
-    // 가이드 삭제
     window.deleteGuide = async id => {
         if (!confirm('정말 삭제하시겠습니까?\n연결된 모든 관광객 데이터도 함께 삭제됩니다.')) return;
         await fetch(`${API}/${id}`, { method: 'DELETE' });
         loadGuides();
     };
 
-    // 시작!
     loadGuides();
 </script>
 </body>

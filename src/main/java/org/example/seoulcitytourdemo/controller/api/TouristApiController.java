@@ -11,9 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpSession;
-import java.time.LocalDate;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,27 +23,29 @@ public class TouristApiController {
     private final TouristRepository touristRepository;
     private final GuideRepository guideRepository;
 
-    // 가이드용: 자신의 관광객만 조회
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+
+    // 가이드용 조회 – 하루 밀림 완전 해결!
     @GetMapping
     public List<TouristDto> getTourists(
             @RequestParam UUID guideId,
             @RequestParam(required = false) String date) {
 
-        if (date != null && !date.isBlank()) {
-            LocalDate localDate = LocalDate.parse(date);
-            OffsetDateTime start = localDate.atStartOfDay(ZoneId.of("Asia/Seoul")).toOffsetDateTime();
-            OffsetDateTime end = localDate.plusDays(1).atStartOfDay(ZoneId.of("Asia/Seoul")).toOffsetDateTime();
+        LocalDate targetDate = date != null && !date.isBlank()
+                ? LocalDate.parse(date)
+                : LocalDate.now(SEOUL);
 
-            return touristRepository.findByGuideIdAndTimeBetweenOrderByTimeDesc(guideId, start, end)
-                    .stream()
-                    .map(TouristDto::from)
-                    .toList();
-        } else {
-            return touristRepository.findByGuideIdOrderByTimeDesc(guideId)
-                    .stream()
-                    .map(TouristDto::from)
-                    .toList();
-        }
+        ZonedDateTime start = targetDate.atStartOfDay(SEOUL);
+        ZonedDateTime end = targetDate.plusDays(1).atStartOfDay(SEOUL);
+
+        return touristRepository
+                .findByGuideIdAndTimeBetweenOrderByTimeDesc(
+                        guideId,
+                        start.toOffsetDateTime(),
+                        end.toOffsetDateTime())
+                .stream()
+                .map(TouristDto::from)
+                .toList();
     }
 
     // 관리자용 전체 조회
@@ -61,15 +61,12 @@ public class TouristApiController {
         }
 
         List<TouristDto> result;
-
         if (start != null && end != null && !start.isBlank() && !end.isBlank()) {
-            LocalDate startDate = LocalDate.parse(start);
-            LocalDate endDate = LocalDate.parse(end);
-
-            OffsetDateTime startTime = startDate.atStartOfDay(ZoneId.of("Asia/Seoul")).toOffsetDateTime();
-            OffsetDateTime endTime = endDate.plusDays(1).atStartOfDay(ZoneId.of("Asia/Seoul")).toOffsetDateTime();
-
-            result = touristRepository.findByTimeBetweenOrderByTimeDesc(startTime, endTime)
+            LocalDate s = LocalDate.parse(start);
+            LocalDate e = LocalDate.parse(end);
+            result = touristRepository.findByTimeBetweenOrderByTimeDesc(
+                            s.atStartOfDay(SEOUL).toOffsetDateTime(),
+                            e.plusDays(1).atStartOfDay(SEOUL).toOffsetDateTime())
                     .stream()
                     .map(TouristDto::fromWithGuideInfo)
                     .toList();
@@ -79,48 +76,34 @@ public class TouristApiController {
                     .map(TouristDto::fromWithGuideInfo)
                     .toList();
         }
-
         return ResponseEntity.ok(result);
     }
 
-    // 삭제 (관리자 전용)
+    // 삭제
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTourist(@PathVariable UUID id, HttpSession session) {
         Guide loginGuide = (Guide) session.getAttribute("loginGuide");
         if (loginGuide == null || !"admin".equals(loginGuide.getLoginId())) {
             return ResponseEntity.status(403).body("권한 없음");
         }
-
         touristRepository.deleteById(id);
         return ResponseEntity.ok().build();
     }
 
-    // 완전 수정된 등록 API (이제 500 안 남!)
+    // 등록 – 이제 @CreationTimestamp가 알아서 한국시간으로 넣어줌!
     @PostMapping("/register")
     public ResponseEntity<?> registerTourist(@RequestBody TouristRegisterRequest request) {
-
-        // 1. guideId가 없거나 빈 문자열이면 400 반환
         if (request.guideId() == null || request.guideId().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("가이드 정보가 없습니다.");
         }
 
-        // 2. String → UUID 변환 (형식 오류 시 400)
-        UUID guideId;
-        try {
-            guideId = UUID.fromString(request.guideId());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("잘못된 가이드 ID 형식입니다.");
-        }
-
-        // 3. 실제 Guide 조회 (없으면 400)
+        UUID guideId = UUID.fromString(request.guideId());
         Guide guide = guideRepository.findById(guideId)
                 .orElse(null);
-
         if (guide == null) {
             return ResponseEntity.badRequest().body("존재하지 않는 가이드입니다.");
         }
 
-        // 4. 정상 저장
         Tourist tourist = Tourist.builder()
                 .guide(guide)
                 .name(request.name())
@@ -128,7 +111,7 @@ public class TouristApiController {
                 .phone(request.phone())
                 .country(request.country())
                 .gender(request.gender())
-                .time(OffsetDateTime.now())
+                // .time() 생략 → @CreationTimestamp가 자동으로 한국시간 넣음!
                 .build();
 
         touristRepository.save(tourist);

@@ -2,6 +2,7 @@ package org.example.seoulcitytourdemo.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -17,7 +18,6 @@ public class Tourist {
     @Column(columnDefinition = "binary(16)", nullable = false)
     private UUID id;
 
-    // 이 부분만 수정! nullable = false 삭제 + optional = true 추가
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
     @JoinColumn(name = "guide_id", columnDefinition = "binary(16)")
     private Guide guide;
@@ -35,6 +35,8 @@ public class Tourist {
     @Column(nullable = false, length = 10)
     private String gender; // MALE / FEMALE
 
-    @Column(nullable = false)
-    private OffsetDateTime time = OffsetDateTime.now();
+    // 핵심! 이 두 어노테이션만 있으면 완벽!
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private OffsetDateTime time;
 }
