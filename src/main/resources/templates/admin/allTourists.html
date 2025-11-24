@@ -33,7 +33,7 @@
 <div class="container">
 
     <div class="d-flex justify-content-between align-items-center my-4">
-        <h4 class="text-success fw-bold m-0">전체 관광객 명단 출력</h4>
+        <h4 class="text-success fw-bold m-0">보험가입을 위한 명단 출력 & 인솔자별 QR출력</h4>
         <div class="btn-group">
             <button class="btn btn-success btn-sm" onclick="downloadExcel('insurance')">보험용 엑셀</button>
             <button class="btn btn-info btn-sm text-white" onclick="downloadExcel('paju')">파주시용 엑셀</button>
@@ -84,6 +84,13 @@
 </div>
 
 <script>
+    const fmtKst = (dateStr) => new Date(dateStr).toLocaleString('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit',
+        hour12: false
+    });
+
     function toKoreanGender(g) {
         if (!g) return '-';
         return g.trim().toUpperCase() === 'MALE' ? '남' : '여';
@@ -93,7 +100,9 @@
         return toKoreanGender(g) === '남' ? 'badge-male' : 'badge-female';
     }
 
-    function escape(s) { return s ? String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '-'; }
+    function escape(s) {
+        return s ? String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])) : '-';
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];
@@ -133,34 +142,31 @@
                 return;
             }
 
-            document.getElementById('totalCount').textContent = data.length + '명';
-
-            // guideId 기준으로 그룹화 (guideId가 없으면 guideName으로 대체)
+            // 가이드 포함 총 인원 수 계산 (각 그룹마다 가이드 1명 + 관광객 수)
+            let totalPeople = 0;
             const groups = {};
             data.forEach(t => {
                 const key = t.guideId || t.guideName;
                 if (!groups[key]) {
                     groups[key] = {
-                        info: {
-                            name: t.guideName,
-                            birth: t.guideBirth,
-                            phone: t.guidePhone,
-                            country: t.guideNationality,
-                            gender: t.guideGender
-                        },
+                        info: { name: t.guideName, birth: t.guideBirth, phone: t.guidePhone,
+                            country: t.guideNationality, gender: t.guideGender },
                         tourists: []
                     };
+                    totalPeople += 1; // 가이드 1명 추가
                 }
                 groups[key].tourists.push(t);
+                totalPeople += 1; // 관광객 1명 추가
             });
+
+            document.getElementById('totalCount').textContent = totalPeople + '명';
 
             let html = '';
             let no = 1;
 
             Object.values(groups).forEach(g => {
-                // 가이드 행
-                html += `
-                <tr class="guide-row">
+                // 가이드 본인
+                html += `<tr class="guide-row">
                     <td><strong>${no++}</strong></td>
                     <td><strong>${escape(g.info.name)}</strong></td>
                     <td>${escape(g.info.birth || '-')}</td>
@@ -173,15 +179,14 @@
 
                 // 관광객들
                 g.tourists.forEach(t => {
-                    html += `
-                    <tr class="tourist-row">
+                    html += `<tr class="tourist-row">
                         <td><strong>${no++}</strong></td>
                         <td><strong>${escape(t.name)}</strong></td>
                         <td>${escape(t.birth || '-')}</td>
                         <td>${escape(t.phone || '-')}</td>
                         <td>${escape(t.country || '-')}</td>
                         <td><span class="badge ${getBadge(t.gender)}">${toKoreanGender(t.gender)}</span></td>
-                        <td>${new Date(t.time).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+                        <td>${fmtKst(t.time)}</td>
                         <td class="no-print"><button class="btn btn-danger btn-sm" onclick="deleteTourist('${t.id}',this)">삭제</button></td>
                     </tr>`;
                 });
@@ -205,42 +210,48 @@
         } catch { alert('삭제 실패'); }
     };
 
+    // 엑셀 다운로드: Guide 컬럼 없이, 가이드도 한 명의 NAME으로 포함
     window.downloadExcel = function(type) {
         const rows = Array.from(document.querySelectorAll('#touristBody tr'));
-        let currentGuide = '';
         const list = [];
 
         rows.forEach(r => {
-            if (r.classList.contains('guide-row')) {
-                currentGuide = r.cells[1].textContent.trim();
-            } else {
-                const c = r.cells;
-                list.push({
-                    no: c[0].textContent.trim(),
-                    guide: currentGuide,
-                    name: c[1].textContent.trim(),
-                    birth: c[2].textContent.trim(),
-                    phone: c[3].textContent.trim(),
-                    country: c[4].textContent.trim(),
-                    gender: c[5].querySelector('.badge')?.textContent.trim() || ''
-                });
-            }
+            const c = r.cells;
+            const name = c[1].querySelector('strong')?.textContent.trim() || c[1].textContent.trim();
+            const birth = c[2].textContent.trim() === '-' ? '' : c[2].textContent.trim();
+            const phone = c[3].textContent.trim();
+            const country = c[4].textContent.trim();
+            const krGender = c[5].querySelector('.badge')?.textContent.trim() || '';
+            const gender = krGender === '남' ? 'M' : krGender === '여' ? 'F' : '';
+
+            list.push({
+                no: c[0].textContent.trim(),
+                name: name,
+                birth: birth,
+                phone: phone,
+                country: country,
+                gender: gender
+            });
         });
 
-        const headers = type==='insurance'
-            ? ['No.','Guide','NAME','Date of Birth','Gender']
-            : ['No.','Guide','NAME','Date of Birth','Phone No.','Nationality','Gender'];
+        const headers = type === 'insurance'
+            ? ['No.', 'NAME', 'Date of Birth', 'Gender']
+            : ['No.', 'NAME', 'Date of Birth', 'Phone No.', 'Nationality', 'Gender'];
 
-        const excelData = list.map(d => type==='insurance'
-            ? [d.no, d.guide, d.name, d.birth=='-'?'':d.birth, d.gender]
-            : [d.no, d.guide, d.name, d.birth=='-'?'':d.birth, d.phone, d.country, d.gender]);
+        const excelData = list.map(d => type === 'insurance'
+            ? [d.no, d.name, d.birth, d.gender]
+            : [d.no, d.name, d.birth, d.phone, d.country, d.gender]);
 
         const ws = XLSX.utils.aoa_to_sheet([headers, ...excelData]);
-        ws['!cols'] = headers.map(()=>({wch:18}));
+
+        ws['!cols'] = type === 'insurance'
+            ? [{wch:6}, {wch:22}, {wch:15}, {wch:8}]
+            : [{wch:6}, {wch:22}, {wch:15}, {wch:16}, {wch:14}, {wch:8}];
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '명단');
-        const s = document.getElementById('startDate').value||'all';
-        const e = document.getElementById('endDate').value||'all';
+        const s = document.getElementById('startDate').value || 'all';
+        const e = document.getElementById('endDate').value || 'all';
         XLSX.writeFile(wb, `관광객명단_${type==='insurance'?'보험용':'파주시용'}_${s}_to_${e}.xlsx`);
     };
 </script>

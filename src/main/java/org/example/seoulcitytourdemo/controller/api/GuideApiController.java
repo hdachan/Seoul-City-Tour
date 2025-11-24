@@ -2,7 +2,7 @@ package org.example.seoulcitytourdemo.controller.api;
 
 import lombok.RequiredArgsConstructor;
 import org.example.seoulcitytourdemo.dto.GuideDto;
-import org.example.seoulcitytourdemo.dto.GuideRegisterRequest;  // ← 여기 추가!
+import org.example.seoulcitytourdemo.dto.GuideRegisterRequest;   // ← 이건 남겨둬!
 import org.example.seoulcitytourdemo.entity.Guide;
 import org.example.seoulcitytourdemo.service.GuideService;
 import org.springframework.http.ResponseEntity;
@@ -22,15 +22,11 @@ public class GuideApiController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         Guide guide = guideService.login(req.loginId(), req.password());
-        if (guide == null) {
-            return ResponseEntity.badRequest().body("로그인 실패");
-        }
-        return ResponseEntity.ok(guide);
+        return guide != null
+                ? ResponseEntity.ok(guide)
+                : ResponseEntity.badRequest().body("로그인 실패");
     }
 
-    // ===== 관리자 전용 API 시작 =====
-
-    // 가이드 등록
     @PostMapping("/register")
     public ResponseEntity<?> registerGuide(@RequestBody GuideRegisterRequest req) {
         if (guideService.existsByLoginId(req.loginId())) {
@@ -40,27 +36,23 @@ public class GuideApiController {
         return ResponseEntity.ok(GuideDto.from(guide, 0L));
     }
 
-    // 전체 가이드 목록 + 관광객 수
     @GetMapping
     public ResponseEntity<List<GuideDto>> getAllGuides() {
         return ResponseEntity.ok(guideService.getAllGuidesWithTouristCount());
     }
 
-    // 로그인 ID 중복 체크
     @GetMapping("/check-id")
     public ResponseEntity<Boolean> checkLoginId(@RequestParam String loginId) {
         return ResponseEntity.ok(guideService.existsByLoginId(loginId));
     }
 
-    // 가이드 삭제 (연결된 관광객도 함께 삭제)
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteGuide(@PathVariable UUID id) {
         guideService.deleteGuide(id);
         return ResponseEntity.ok().build();
     }
 
-    // ===== DTO & Request =====
+    // LoginRequest도 dto 패키지에 있으면 좋지만, 없으면 여기다 선언해도 됨
+    // 근데 보통은 컨트롤러 전용 request는 여기 두는 게 맞아!
     record LoginRequest(String loginId, String password) {}
-
-    // ← 여기 있던 GuideRegisterRequest record 완전히 삭제함!
 }

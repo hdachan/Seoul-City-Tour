@@ -2,8 +2,8 @@ package org.example.seoulcitytourdemo.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -14,7 +14,7 @@ import java.util.UUID;
 public class Tourist {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "binary(16)", nullable = false)
     private UUID id;
 
@@ -30,13 +30,13 @@ public class Tourist {
 
     private String phone;
 
+    @Column(name = "country", length = 100)
     private String country;
 
     @Column(nullable = false, length = 10)
-    private String gender; // MALE / FEMALE
+    private String gender;
 
-    // 핵심! 이 두 어노테이션만 있으면 완벽!
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
-    private OffsetDateTime time;
+    @Column(name = "time", nullable = false, updatable = false,
+            columnDefinition = "DATETIME(6)")
+    private LocalDateTime time;
 }
