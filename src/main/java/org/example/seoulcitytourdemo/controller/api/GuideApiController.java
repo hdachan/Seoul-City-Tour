@@ -1,25 +1,27 @@
+// src/main/java/org/example/seoulcitytourdemo/controller/api/GuideApiController.java
 package org.example.seoulcitytourdemo.controller.api;
 
 import lombok.RequiredArgsConstructor;
-import org.example.seoulcitytourdemo.dto.GuideDto;
-import org.example.seoulcitytourdemo.dto.GuideRegisterRequest;   // ← 이건 남겨둬!
+import org.example.seoulcitytourdemo.dto.*;
 import org.example.seoulcitytourdemo.entity.Guide;
+import org.example.seoulcitytourdemo.repository.TouristRepository;
 import org.example.seoulcitytourdemo.service.GuideService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/guides")
+@RequestMapping("/api")
 public class GuideApiController {
 
     private final GuideService guideService;
+    private final TouristRepository touristRepository;
 
-    @PostMapping("/login")
+    // 가이드 로그인
+    @PostMapping("/guides/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest req) {
         Guide guide = guideService.login(req.loginId(), req.password());
         return guide != null
@@ -27,7 +29,8 @@ public class GuideApiController {
                 : ResponseEntity.badRequest().body("로그인 실패");
     }
 
-    @PostMapping("/register")
+    // 가이드 등록
+    @PostMapping("/guides/register")
     public ResponseEntity<?> registerGuide(@RequestBody GuideRegisterRequest req) {
         if (guideService.existsByLoginId(req.loginId())) {
             return ResponseEntity.badRequest().body("이미 사용 중인 로그인 ID입니다.");
@@ -36,23 +39,32 @@ public class GuideApiController {
         return ResponseEntity.ok(GuideDto.from(guide, 0L));
     }
 
-    @GetMapping
+    // 전체 가이드 목록 + 오늘 등록된 관광객 수
+    @GetMapping("/guides")
     public ResponseEntity<List<GuideDto>> getAllGuides() {
         return ResponseEntity.ok(guideService.getAllGuidesWithTouristCount());
     }
 
-    @GetMapping("/check-id")
+    // 로그인 ID 중복 체크
+    @GetMapping("/guides/check-id")
     public ResponseEntity<Boolean> checkLoginId(@RequestParam String loginId) {
         return ResponseEntity.ok(guideService.existsByLoginId(loginId));
     }
 
-    @DeleteMapping("/{id}")
+    // 가이드 수정
+    @PutMapping("/guides/{id}")
+    public ResponseEntity<?> updateGuide(@PathVariable UUID id, @RequestBody GuideUpdateRequest req) {
+        Guide updated = guideService.updateGuide(id, req);
+        long count = touristRepository.countByGuideId(id);
+        return ResponseEntity.ok(GuideDto.from(updated, count));
+    }
+
+    // 가이드 삭제
+    @DeleteMapping("/guides/{id}")
     public ResponseEntity<?> deleteGuide(@PathVariable UUID id) {
         guideService.deleteGuide(id);
         return ResponseEntity.ok().build();
     }
 
-    // LoginRequest도 dto 패키지에 있으면 좋지만, 없으면 여기다 선언해도 됨
-    // 근데 보통은 컨트롤러 전용 request는 여기 두는 게 맞아!
     record LoginRequest(String loginId, String password) {}
 }

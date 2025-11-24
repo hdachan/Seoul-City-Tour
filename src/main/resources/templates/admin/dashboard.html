@@ -4,31 +4,32 @@
     <meta charset="UTF-8">
     <title>서울 시티 투어 - 관리자 시스템</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; padding-top: 20px; }
-        .nav-tabs .nav-link { font-weight: 500; }
-        .tab-pane { background: white; border: 1px solid #dee2e6; border-top: none; border-radius: 0 0 8px 8px; padding: 20px; min-height: 70vh; }
-        .btn-logout { position: fixed; top: 15px; right: 20px; z-index: 1000; }
-        iframe { width: 100%; height: 80vh; border: none; }
-        .qr-card { transition: transform 0.2s; }
-        .qr-card:hover { transform: scale(1.05); }
+        body { background:#f9f9f9; padding:30px 0; font-family:system-ui,-apple-system,sans-serif; }
+        .container { max-width:1200px; }
+        .nav-tabs .nav-link { font-weight:600; padding:15px 30px; }
+        .tab-pane { background:white; border:1px solid #ddd; border-top:none; border-radius:0 0 12px 12px; padding:30px; min-height:75vh; }
+        .btn-logout { position:fixed; top:15px; right:20px; z-index:1000; }
+        iframe { width:100%; height:80vh; border:none; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1); }
+        .qr-card:hover { transform:scale(1.05); transition:0.2s; }
+        .category-card { transition:all 0.3s; cursor:pointer; }
+        .category-card:hover { transform:translateY(-4px); box-shadow:0 10px 25px rgba(0,0,0,0.12) !important; }
     </style>
 </head>
 <body>
 
-<a href="/guide/logout" class="btn btn-outline-danger btn-sm btn-logout">
-    로그아웃
-</a>
+<a href="/guide/logout" class="btn btn-outline-danger btn-sm btn-logout">로그아웃</a>
 
 <div class="container">
     <div class="text-center mb-5">
-        <h1 class="display-5 fw-bold text-primary">서울 시티 투어 관리자 시스템</h1>
-        <p class="text-muted">관리자 <strong th:text="${guide.name}"></strong>님, 환영합니다</p>
+        <h1 class="display-6 fw-bold text-primary">서울 시티 투어 관리자 시스템</h1>
+        <p class="text-muted">관리자 <strong th:text="${guide.name}"></strong>님</p>
     </div>
 
-    <ul class="nav nav-tabs mb-4" role="tablist">
+    <!-- 탭 메뉴 -->
+    <ul class="nav nav-tabs mb-4 justify-content-center" role="tablist">
         <li class="nav-item">
             <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-guides">가이드 관리</button>
         </li>
@@ -50,107 +51,177 @@
             <iframe src="/admin/register-guide.html" frameborder="0"></iframe>
         </div>
 
-        <!-- 2. QR 전체 출력 + 개별 다운로드 + 전체 ZIP 다운로드 -->
+        <!-- 2. QR 전체 출력 -->
         <div class="tab-pane fade" id="tab-qr">
             <div class="text-center mb-4">
-                <h4 class="mb-3 text-success fw-bold">모든 가이드 QR 코드 출력</h4>
-                <div class="btn-group">
-                    <button class="btn btn-success" onclick="window.print()">
-                        인쇄하기
-                    </button>
-                    <button class="btn btn-primary" onclick="downloadAllQR()">
-                        전체 QR ZIP 다운로드
-                    </button>
+                <h4 class="fw-bold text-success">모든 가이드 QR 코드</h4>
+                <div class="btn-group mb-4" role="group">
+                    <button class="btn btn-success" onclick="window.print()">인쇄하기</button>
+                    <button class="btn btn-primary" onclick="downloadAllQR()">ZIP 다운로드</button>
                 </div>
             </div>
-            <div id="qrContainer" class="row g-3"></div>
+            <div id="qrContainer" class="row g-4 justify-content-center"></div>
         </div>
 
-        <!-- 3. 전체 관광객 명단 (iframe으로 완벽 연결!) -->
+        <!-- 3. 전체 관광객 명단 -->
         <div class="tab-pane fade" id="tab-tourists">
             <iframe src="/admin/all-tourists.html" frameborder="0"></iframe>
         </div>
 
         <!-- 4. 카테고리 관리 -->
         <div class="tab-pane fade" id="tab-categories">
-            <h4>카테고리 관리</h4>
-            <p>아직 구현 중입니다... (다음에 추가할게요!)</p>
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title mb-4 text-primary fw-bold">새 카테고리 생성</h5>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">카테고리 이름</label>
+                            <input type="text" id="categoryName" class="form-control form-control-lg" placeholder="예: 2025년 4월 일본 단체 투어">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">담당 가이드</label>
+                            <select id="categoryGuide" class="form-select form-select-lg">
+                                <option value="">가이드 선택</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-success btn-lg w-100" onclick="createCategory()">생성하기</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="mb-4 text-primary fw-bold">생성된 카테고리</h5>
+                    <div id="categoryList" class="row g-4">
+                        <div class="col-12 text-center py-5 text-muted">
+                            <h5>아직 생성된 카테고리가 없습니다.</h5>
+                            <p>위에서 카테고리를 만들어 보세요!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-
 <script>
     const BASE = location.origin;
 
-    // QR 전체 출력 + 개별 다운로드 버튼 포함
+    // QR 출력
     async function loadQR() {
         try {
             const res = await fetch('/api/guides');
-            if (!res.ok) throw new Error('가이드 목록을 불러올 수 없습니다.');
-
             const guides = await res.json();
             const container = document.getElementById('qrContainer');
-
             if (guides.length === 0) {
-                container.innerHTML = '<div class="col-12 text-center py-5"><h5 class="text-muted">등록된 가이드가 없습니다</h5></div>';
+                container.innerHTML = '<div class="col-12 text-center py-5 text-muted"><h5>등록된 가이드가 없습니다</h5></div>';
                 return;
             }
-
             container.innerHTML = guides.map(g => `
-                <div class="col-6 col-md-4 col-lg-3 text-center">
-                    <div class="qr-card border p-4 bg-white shadow-sm">
-                        <h6 class="mb-2 fw-bold">${escape(g.name)} 가이드</h6>
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${BASE}/tourist/register?guideId=${g.id}"
-                             alt="QR" class="img-fluid mb-3">
-                        <p class="small text-muted mb-2">${escape(g.loginId)}</p>
-                        <button class="btn btn-sm btn-primary w-100" onclick="downloadSingleQR('${g.id}', '${escape(g.name)}')">
-                            QR 다운로드
-                        </button>
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="card qr-card border-0 shadow-sm text-center p-3">
+                        <h6 class="fw-bold mb-2">${g.name} 가이드</h6>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${BASE}/tourist/register?guideId=${g.id}"
+                             class="img-fluid rounded mb-2">
+                        <small class="text-muted">${g.loginId}</small>
                     </div>
                 </div>
             `).join('');
-
         } catch (err) {
-            document.getElementById('qrContainer').innerHTML =
-                `<div class="col-12 text-center text-danger py-5">오류: ${err.message}</div>`;
+            document.getElementById('qrContainer').innerHTML = '<div class="text-center text-danger py-5">QR 로드 실패</div>';
         }
     }
 
-    // 개별 QR 다운로드 (클릭하면 바로 다운로드!)
-    window.downloadSingleQR = async (guideId, guideName) => {
-        const url = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${BASE}/tourist/register?guideId=${guideId}`;
-        try {
-            const response = await fetch(url);
-            const blob = await response.blob();
-            saveAs(blob, `${guideName}_가이드_QR.png`);
-        } catch {
-            alert('QR 다운로드 실패');
-        }
-    };
-
-    // 전체 QR ZIP 다운로드
+    // 전체 ZIP 다운로드
     window.downloadAllQR = async () => {
         const zip = new JSZip();
         try {
             const res = await fetch('/api/guides');
             const guides = await res.json();
-
             for (const g of guides) {
-                const url = `https://api.qrserver.com/v1/create-qr-code/?size=800x800&data=${BASE}/tourist/register?guideId=${g.id}`;
-                const response = await fetch(url);
-                const blob = await response.blob();
+                const url = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${BASE}/tourist/register?guideId=${g.id}`;
+                const blob = await fetch(url).then(r => r.blob());
                 zip.file(`${g.name}_가이드_QR.png`, blob);
             }
+            const content = await zip.generateAsync({type:"blob"});
+            saveAs(content, "서울시티투어_전체_QR.zip");
+        } catch { alert('ZIP 생성 실패'); }
+    };
 
-            const content = await zip.generateAsync({ type: "blob" });
-            saveAs(content, "서울시티투어_전체가이드_QR.zip");
-        } catch {
-            alert('전체 다운로드 실패');
+    // 카테고리 관련
+    async function loadGuidesForSelect() {
+        const res = await fetch('/api/guides');
+        const guides = await res.json();
+        const select = document.getElementById('categoryGuide');
+        select.innerHTML = '<option value="">가이드 선택</option>' +
+            guides.map(g => `<option value="${g.id}">${g.name} 가이드 (${g.loginId})</option>`).join('');
+    }
+
+    async function createCategory() {
+        const name = document.getElementById('categoryName').value.trim();
+        const guideId = document.getElementById('categoryGuide').value;
+        if (!name || !guideId) return alert('이름과 가이드를 선택해주세요.');
+        const res = await fetch('/api/categories', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name, guideId})
+        });
+        if (res.ok) {
+            document.getElementById('categoryName').value = '';
+            document.getElementById('categoryGuide').value = '';
+            loadCategories();
+        } else {
+            alert('생성 실패: ' + await res.text());
         }
+    }
+
+    async function loadCategories() {
+        try {
+            const res = await fetch('/api/categories');
+            const categories = await res.json();
+            const container = document.getElementById('categoryList');
+            if (!categories || categories.length === 0) {
+                container.innerHTML = `<div class="col-12 text-center py-5 text-muted"><h5>아직 생성된 카테고리가 없습니다.</h5><p>위에서 만들어 보세요!</p></div>`;
+                return;
+            }
+            container.innerHTML = categories.map(cat => `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card category-card h-100 border-0 shadow-sm">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <h5 class="card-title mb-1">${escape(cat.name)}</h5>
+                                    <p class="text-muted mb-0"><small>${escape(cat.guide.name)} 가이드</small></p>
+                                </div>
+                                <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); deleteCategory(${cat.id})">
+                                    삭제
+                                </button>
+                            </div>
+                            <div class="mt-auto">
+                                <a href="/admin/category-tourists.html?categoryId=${cat.id}&categoryName=${encodeURIComponent(cat.name)}&guideName=${encodeURIComponent(cat.guide.name)}&guidePhone=${cat.guide.phone ? encodeURIComponent(cat.guide.phone) : ''}"
+                                   target="_blank" class="btn btn-primary w-100">
+                                    명단 보기 · 인쇄하기
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } catch (err) {
+            container.innerHTML = `<div class="col-12 text-center text-danger py-5">로드 실패</div>`;
+        }
+    }
+
+    window.deleteCategory = async id => {
+        if (!confirm('정말 삭제하시겠습니까?\n카테고리와 연결된 모든 관광객 데이터도 삭제됩니다.')) return;
+        await fetch(`/api/categories/${id}`, {method: 'DELETE'});
+        loadCategories();
     };
 
     function escape(str) {
@@ -160,21 +231,23 @@
         return div.innerHTML;
     }
 
-    // 탭 전환 시 QR 로드
+    // 탭 전환 시 로드
     document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
         tab.addEventListener('shown.bs.tab', e => {
-            if (e.target.getAttribute('data-bs-target') === '#tab-qr') {
-                loadQR();
+            const target = e.target.getAttribute('data-bs-target');
+            if (target === '#tab-qr') loadQR();
+            if (target === '#tab-categories') {
+                loadGuidesForSelect();
+                loadCategories();
             }
         });
     });
 
-    // 페이지 로드 시 오늘 날짜 설정
+    // 해시로 탭 열기
     document.addEventListener('DOMContentLoaded', () => {
-        // QR 탭이 기본이면 자동 로드
-        if (location.hash === '#tab-qr' || !location.hash) {
-            const qrTab = document.querySelector('[data-bs-target="#tab-qr"]');
-            if (qrTab) new bootstrap.Tab(qrTab).show();
+        const hash = location.hash;
+        if (hash && document.querySelector(`[data-bs-target="${hash}"]`)) {
+            new bootstrap.Tab(document.querySelector(`[data-bs-target="${hash}"]`)).show();
         }
     });
 </script>

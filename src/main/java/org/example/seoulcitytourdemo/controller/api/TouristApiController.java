@@ -1,3 +1,4 @@
+// src/main/java/org/example/seoulcitytourdemo/controller/api/TouristApiController.java
 package org.example.seoulcitytourdemo.controller.api;
 
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpSession;
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +26,7 @@ public class TouristApiController {
     private final TouristRepository touristRepository;
     private final GuideRepository guideRepository;
 
+    // 서울 시간대를 상수로 정의 → 모든 곳에서 동일하게 사용
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
 
@@ -36,8 +40,9 @@ public class TouristApiController {
                 ? LocalDate.parse(date)
                 : LocalDate.now(SEOUL);
 
-        LocalDateTime start = targetDate.atStartOfDay();
-        LocalDateTime end = targetDate.plusDays(1).atStartOfDay();
+        // 반드시 서울 시간대 기준으로 범위 설정!
+        LocalDateTime start = targetDate.atStartOfDay(SEOUL).toLocalDateTime();
+        LocalDateTime end   = targetDate.plusDays(1).atStartOfDay(SEOUL).toLocalDateTime();
 
         return touristRepository
                 .findByGuideIdAndTimeBetweenOrderByTimeDesc(guideId, start, end)
@@ -65,10 +70,12 @@ public class TouristApiController {
             LocalDate s = LocalDate.parse(start);
             LocalDate e = LocalDate.parse(end);
 
+            // 여기서도 서울 시간대 기준!
+            LocalDateTime startTime = s.atStartOfDay(SEOUL).toLocalDateTime();
+            LocalDateTime endTime   = e.plusDays(1).atStartOfDay(SEOUL).toLocalDateTime();
+
             result = touristRepository
-                    .findByTimeBetweenOrderByTimeDesc(
-                            s.atStartOfDay(),
-                            e.plusDays(1).atStartOfDay())
+                    .findByTimeBetweenOrderByTimeDesc(startTime, endTime)
                     .stream()
                     .map(TouristDto::fromWithGuideInfo)
                     .toList();
@@ -111,16 +118,14 @@ public class TouristApiController {
             return ResponseEntity.badRequest().body("잘못된 가이드 ID 형식입니다.");
         }
 
-        Guide guide = guideRepository.findById(guideId).orElse(null);
+        Guide guide = guideRepository.findById(guideId)
+                .orElse(null);
         if (guide == null) {
             return ResponseEntity.badRequest().body("존재하지 않는 가이드입니다.");
         }
 
-        // ✔ 한국 시간(LocalDateTime) 정확히 생성
+        // 서울 시간으로 정확히 저장
         LocalDateTime seoulNow = LocalDateTime.now(SEOUL);
-
-        System.out.println("▶ 한국시간 저장됨 = " + seoulNow);
-        System.out.println("▶ JVM TimeZone = " + ZoneId.systemDefault());
 
         Tourist tourist = Tourist.builder()
                 .guide(guide)
@@ -133,7 +138,6 @@ public class TouristApiController {
                 .build();
 
         touristRepository.save(tourist);
-
         return ResponseEntity.ok().build();
     }
 }

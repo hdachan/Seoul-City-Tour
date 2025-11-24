@@ -83,8 +83,11 @@
 
 <script th:inline="javascript">
     const guideId = /*[[${guideId}]]*/ null;
+    const guideName = /*[[${guideName}]]*/ '가이드';
 
-    document.getElementById('dateFilter').valueAsDate = new Date();
+    // 완벽한 해결책: 무조건 서울 기준 오늘 날짜로 설정 (전 세계 어디서 접속해도 정확!)
+    const seoulToday = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+    document.getElementById('dateFilter').value = seoulToday;
 
     async function loadTourists() {
         const date = document.getElementById('dateFilter').value;
@@ -97,13 +100,12 @@
 
         try {
             const res = await fetch(`/api/tourists?guideId=${guideId}&date=${date}`);
-            if (!res.ok) throw new Error();
+            if (!res.ok) throw new Error('서버 응답 오류');
 
             const tourists = await res.json();
             const realPassengerCount = tourists.length;
-            const displayedPassengerCount = realPassengerCount + 1; // 기사 포함해서 승객 수로 표시
+            const displayedPassengerCount = realPassengerCount + 1; // 기사 포함
 
-            // 여기서 핵심! 승객 칸에 (실제 승객 + 1) 표시
             document.getElementById('passengerCount').textContent = displayedPassengerCount;
 
             if (realPassengerCount === 0) {
@@ -126,14 +128,15 @@
             document.getElementById('touristList').innerHTML = rows;
 
         } catch (e) {
-            console.error(e);
+            console.error('관광객 조회 실패:', e);
             document.getElementById('touristList').innerHTML =
                 '<tr><td colspan="6" style="padding:70px; color:red;">데이터를 불러오지 못했습니다.</td></tr>';
         }
     }
 
+    // 페이지 로드 시 자동으로 오늘 데이터 로드
     document.addEventListener('DOMContentLoaded', () => {
-        document.title = /*[[${guideName}]]*/ + ' 가이드님 관광객 명단';
+        document.title = guideName + ' 가이드님 관광객 명단';
         loadTourists();
     });
 </script>
