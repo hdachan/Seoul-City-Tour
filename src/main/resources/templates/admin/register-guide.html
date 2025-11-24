@@ -153,7 +153,7 @@
                     <td class="text-center">${g.gender === 'MALE' ? '남' : '여'}</td>
                     <td class="text-center" style="cursor:pointer;" title="클릭 시 해당 가이드 명단 보기"
                         onclick="window.open('/admin/guide-tourists.html?guideId=${g.id}&name=${encodeURIComponent(g.name)}','_blank')">
-                        <span class="today-count">오늘 ${g.touristCount}명</span>
+                        <span class="today-count">${g.touristCount}명</span>
                     </td>
                     <td class="text-center"><div id="${qrId}" class="qr-box"></div></td>
                     <td class="text-center">
