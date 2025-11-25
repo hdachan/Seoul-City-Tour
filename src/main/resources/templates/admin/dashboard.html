@@ -141,7 +141,7 @@
             <iframe src="/admin/all-tourists.html" frameborder="0"></iframe>
         </div>
 
-        <!-- 4. 카테고리 관리 (기존 그대로) -->
+        <!-- 4. 카테고리 관리 -->
         <div class="tab-pane fade" id="tab-categories">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body">
@@ -149,7 +149,7 @@
                     <div class="row g-3 align-items-end">
                         <div class="col-md-6">
                             <label class="form-label fw-bold">카테고리 이름</label>
-                            <input type="text" id="categoryName" class="form-control form-control-lg" placeholder="예: 2025년 4월 일본 단체 투어">
+                            <input type="text" id="categoryName" class="form-control form-control-lg" placeholder="DMZ 투어">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold">담당 가이드</label>
@@ -184,7 +184,7 @@
 <script>
     const BASE = location.origin;
 
-    // QR 출력 + 진짜 다운로드 (바로 저장됨!)
+    // QR 출력
     async function loadQR() {
         try {
             const res = await fetch('/api/guides');
@@ -214,34 +214,29 @@
             `).join('');
 
         } catch (err) {
-            container.innerHTML =
-                '<div class="col-12 text-center text-danger py-5"><h5>QR 코드를 불러오지 못했습니다.</h5></div>';
+            container.innerHTML = '<div class="col-12 text-center text-danger py-5"><h5>QR 코드를 불러오지 못했습니다.</h5></div>';
         }
     }
 
-    // 진짜 다운로드 함수 (바로 파일 저장됨!)
     window.downloadSingleQR = async (guideName, urlData) => {
         const fullUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(urlData)}`;
-
         try {
             const response = await fetch(fullUrl);
             const blob = await response.blob();
             const blobUrl = window.URL.createObjectURL(blob);
-
             const a = document.createElement('a');
             a.href = blobUrl;
             a.download = `${guideName}_QR.png`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            window.URL.revokeObjectURL(blobUrl); // 메모리 정리
+            window.URL.revokeObjectURL(blobUrl);
         } catch (e) {
             alert('다운로드 중 오류가 발생했습니다.');
-            console.error(e);
         }
     };
 
-    // 카테고리 관련 함수들 (기존 그대로 유지)
+    // 카테고리 관련
     async function loadGuidesForSelect() {
         const res = await fetch('/api/guides');
         const guides = await res.json();
@@ -291,8 +286,8 @@
                                 </button>
                             </div>
                             <div class="mt-auto">
-                                <a href="/admin/category-tourists.html?categoryId=${cat.id}&categoryName=${encodeURIComponent(cat.name)}&guideName=${encodeURIComponent(cat.guide.name)}&guidePhone=${cat.guide.phone ? encodeURIComponent(cat.guide.phone) : ''}"
-                                   target="_blank" class="btn btn-primary w-100">
+                                <!-- 여기만 바뀌었습니다! -->
+                                <a href="/admin/category/${cat.id}" target="_blank" class="btn btn-primary w-100">
                                     명단 보기 · 인쇄하기
                                 </a>
                             </div>
@@ -330,7 +325,6 @@
         });
     });
 
-    // 해시로 탭 열기
     document.addEventListener('DOMContentLoaded', () => {
         const hash = location.hash;
         if (hash && document.querySelector(`[data-bs-target="${hash}"]`)) {

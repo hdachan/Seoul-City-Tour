@@ -53,17 +53,16 @@
 
 <script th:inline="javascript">
     const guideId = /*[[${guideId}]]*/ null;
-    const guideName = /*[[${guideName}]]*/ '';
     const categoryName = /*[[${categoryName}]]*/ '';
 
-    document.title = guideName + ' 가이드님 - ' + categoryName;
+    document.title = /*[[${guideName}]]*/ + ' 가이드님 - ' + categoryName;
     document.getElementById('dateFilter').valueAsDate = new Date();
 
     async function loadTourists() {
         const date = document.getElementById('dateFilter').value;
         if (!date) return alert('날짜를 선택하세요');
 
-        const res = await fetch(`/api/tourists?guideId=${guideId}&date=${date}`);
+        const res = await fetch(`/api/tourists?guideId=${guideId}&date=${date}&categoryId=${/*[[${categoryId}]]*/ null}`);
         const tourists = await res.json();
 
         document.getElementById('passengerCount').textContent = tourists.length + 1;
