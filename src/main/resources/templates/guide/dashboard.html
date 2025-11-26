@@ -109,9 +109,7 @@
 
     <div class="no-print mt-4" id="touristList"></div>
 
-    <!-- 인쇄용 영역 (기존 + 새 헤더 테이블 추가) -->
     <div class="print-area bg-white">
-        <!-- 새로 추가된 인쇄용 헤더 테이블 -->
         <table class="print-header-table w-100 mb-4">
             <tr>
                 <th>단체명</th><td colspan="2">Seoul City Tour</td>
@@ -136,10 +134,12 @@
     </div>
 </div>
 
+<!-- 모든 외부 스크립트 먼저 로드 -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/js/datepicker-full.min.js"></script>
 
+<!-- 우리 스크립트는 제일 마지막에! 그래야 toggleSection 오류 안 남 -->
 <script th:inline="javascript">
     const guideId = /*[[${guide.id}]]*/ null;
     const guideName = /*[[${guide.name}]]*/ '가이드';
@@ -154,7 +154,14 @@
     now.setHours(now.getHours() + 9);
     const today = now.toISOString().split('T')[0];
 
-    // 기존 스크립트 그대로 유지 (toggleSection 등 생략)
+    // toggleSection 전역 함수 먼저 정의 (이게 핵심!)
+    window.toggleSection = function(id) {
+        const body = document.getElementById('section-' + id);
+        const icon = document.getElementById('icon-' + id);
+        body.classList.toggle('show');
+        icon.classList.toggle('bi-chevron-down');
+        icon.classList.toggle('bi-chevron-up');
+    };
 
     document.addEventListener('DOMContentLoaded', () => {
         const dateInput = document.getElementById('filterDate');
@@ -164,7 +171,7 @@
         dateInput.value = today;
         printDateLabel.innerText = '기준일: 오늘';
 
-        // QR 생성 (기존 그대로)
+        // QR 생성
         const baseUrl = location.origin;
         const qrUrl = `${baseUrl}/tourist/register?guideId=${guideId}`;
         document.getElementById('myQRCode').innerHTML = `
@@ -174,12 +181,44 @@
         window.downloadMyQR = () => {
             fetch(`https://api.qrserver.com/v1/create-qr-code/?size=1200x1200&data=${encodeURIComponent(qrUrl)}`)
                 .then(r => r.blob())
-                .then(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `${guideName}_QR.png`; a.click(); });
+                .then(b => {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(b);
+                    a.download = `${guideName}_QR.png`;
+                    a.click();
+                });
         };
 
-        // 등록 폼 등 기존 로직 그대로
+        // 등록 폼 제출 (이제 정확한 URL)
+        document.getElementById('registerForm').onsubmit = async (e) => {
+            e.preventDefault();
 
-        document.getElementById('registerForm').onsubmit = async (e) => { /* 기존 그대로 */ };
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData);
+            data.guideId = guideId + '';  // 문자열로 강제
+
+            try {
+                const res = await fetch('/api/tourists/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    document.getElementById('formAlert').innerHTML =
+                        '<div class="alert alert-success alert-dismissible fade show">등록 완료!<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+                    e.target.reset();
+                    const currentDate = dateInput.value || today;
+                    loadTourists(currentDate);
+                } else {
+                    const errorText = await res.text();
+                    throw new Error(errorText || '등록 실패');
+                }
+            } catch (err) {
+                document.getElementById('formAlert').innerHTML =
+                    '<div class="alert alert-danger alert-dismissible fade show">등록 실패: ' + (err.message || '네트워크 오류') + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+            }
+        };
 
         async function loadTourists(date = today) {
             const url = date ? `/api/tourists?date=${date}&guideId=${guideId}` : `/api/tourists?guideId=${guideId}`;
@@ -189,11 +228,13 @@
             const todayCount = data.filter(t => toKoreaTime(t.time).toISOString().startsWith(today)).length;
             document.getElementById('countValue').textContent = todayCount;
 
-            const filtered = date ? data.filter(t => toKoreaTime(t.time).toISOString().startsWith(date)) : data.filter(t => toKoreaTime(t.time).toISOString().startsWith(today));
+            const filtered = date
+                ? data.filter(t => toKoreaTime(t.time).toISOString().startsWith(date))
+                : data.filter(t => toKoreaTime(t.time).toISOString().startsWith(today));
 
             renderTable(filtered, 'touristList');
             renderTable(filtered, 'printTable');
-            document.getElementById('printPassengerCount').textContent = filtered.length;  // 총인원 업데이트
+            document.getElementById('printPassengerCount').textContent = filtered.length;
         }
 
         function renderTable(data, containerId) {
@@ -214,8 +255,7 @@
                         <td>${t.country || '-'}</td>
                         <td>${t.gender === 'MALE' ? '남' : '여'}</td>
                         <td class="text-muted small">${timeStr}</td>
-                    </tr>
-                `;
+                    </tr>`;
             }).join('');
 
             container.innerHTML = `
@@ -224,8 +264,7 @@
                         <thead><tr><th>#</th><th>이름</th><th>생년월일</th><th>연락처</th><th>국적</th><th>성별</th><th>등록시간</th></tr></thead>
                         <tbody>${rows}</tbody>
                     </table>
-                </div>
-            `;
+                </div>`;
         }
 
         document.getElementById('btnSearch').onclick = () => {
@@ -238,14 +277,6 @@
 
         loadTourists(today);
     });
-
-    window.toggleSection = function(id) {
-        const body = document.getElementById('section-' + id);
-        const icon = document.getElementById('icon-' + id);
-        body.classList.toggle('show');
-        icon.classList.toggle('bi-chevron-down');
-        icon.classList.toggle('bi-chevron-up');
-    };
 </script>
 </body>
 </html>

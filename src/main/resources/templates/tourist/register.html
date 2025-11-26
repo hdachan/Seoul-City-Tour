@@ -48,12 +48,12 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label" id="labelPhone">전화번호</label>
+                <label class="form-label" id="labelPhone">전화번호 <span class="text-danger">*</span></label>
                 <input type="tel" class="form-control" id="phone">
             </div>
 
             <div class="mb-3">
-                <label class="form-label" id="labelCountry">국적</label>
+                <label class="form-label" id="labelCountry">국적 <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" id="country" placeholder="중국">
             </div>
 
@@ -88,7 +88,6 @@
         ja: { name:"名前", birth:"生年月日", phone:"電話番号", country:"国籍", gender:"性別", male:"男性", female:"女性", submit:"登録完了", success:"登録が完了しました！", placeholderCountry:"中国", placeholderDate:"日付を選択" }
     };
 
-    // Flatpickr 로케일 매핑
     const flatpickrLocales = {
         ko: flatpickr.l10ns.ko,
         en: flatpickr.l10ns.en,
@@ -101,11 +100,10 @@
     const urlLang = urlParams.get('lang');
     if (['en','zh','ja'].includes(urlLang)) lang = urlLang;
 
-    let fp; // Flatpickr 인스턴스 전역 보관
+    let fp;
 
     function initFlatpickr() {
-        if (fp) fp.destroy(); // 기존 인스턴스 제거
-
+        if (fp) fp.destroy();
         fp = flatpickr("#birth", {
             locale: flatpickrLocales[lang] || flatpickr.l10ns.ko,
             dateFormat: "Y-m-d",
@@ -114,7 +112,6 @@
             clickOpens: true,
             disableMobile: true
         });
-
         document.getElementById('birth').placeholder = texts[lang].placeholderDate;
     }
 
@@ -124,8 +121,8 @@
 
         document.getElementById('labelName').firstChild.textContent = t.name + ' ';
         document.getElementById('labelBirth').firstChild.textContent = t.birth + ' ';
-        document.getElementById('labelPhone').textContent = t.phone;
-        document.getElementById('labelCountry').textContent = t.country;
+        document.getElementById('labelPhone').textContent = t.phone + ' *';
+        document.getElementById('labelCountry').textContent = t.country + ' *';
         document.getElementById('labelGender').textContent = t.gender;
         document.getElementById('submitBtn').textContent = t.submit;
         document.getElementById('country').placeholder = t.placeholderCountry;
@@ -134,7 +131,6 @@
         opts[0].text = t.male;   opts[0].value = "MALE";
         opts[1].text = t.female; opts[1].value = "FEMALE";
 
-        // Flatpickr 다시 초기화
         initFlatpickr();
 
         const newUrl = new URL(location);
@@ -157,15 +153,33 @@
         }
 
         document.getElementById('langSelect').value = lang;
-        applyLang(lang); // 초기화
+        applyLang(lang);
     });
 
     document.getElementById('langSelect').onchange = e => applyLang(e.target.value);
 
-    // 제출 로직 그대로 (birth.value는 YYYY-MM-DD 형식으로 나옴 → 백엔드 완벽 호환)
+    // 전화번호 + 국적 필수 체크 추가된 최종 제출 로직
     document.getElementById('touristForm').onsubmit = async e => {
         e.preventDefault();
         const t = texts[lang];
+
+        // 전화번호 필수 체크
+        const phoneValue = document.getElementById('phone').value.trim();
+        if (phoneValue === '') {
+            document.getElementById('result').innerHTML =
+                '<div class="alert alert-warning text-center">전화번호를 입력해주세요.</div>';
+            document.getElementById('phone').focus();
+            return;
+        }
+
+        // 국적 필수 체크
+        const countryValue = document.getElementById('country').value.trim();
+        if (countryValue === '') {
+            document.getElementById('result').innerHTML =
+                '<div class="alert alert-warning text-center">국적을 입력해주세요.</div>';
+            document.getElementById('country').focus();
+            return;
+        }
 
         const guideId = document.getElementById('guideId').value.trim();
         if (!guideId || guideId === 'null') {
@@ -184,8 +198,8 @@
             guideId: guideId,
             name: document.getElementById('name').value.trim(),
             birth: document.getElementById('birth').value,
-            phone: document.getElementById('phone').value.trim() || null,
-            country: document.getElementById('country').value.trim() || null,
+            phone: phoneValue,
+            country: countryValue,
             gender: document.getElementById('gender').value
         };
 
@@ -200,7 +214,7 @@
             if (res.ok) {
                 result.innerHTML = `<div class="alert alert-success text-center fs-5 fw-bold">${t.success}</div>`;
                 e.target.reset();
-                fp.clear(); // Flatpickr 초기화
+                fp.clear();
             } else {
                 const msg = await res.text();
                 result.innerHTML = `<div class="alert alert-danger text-center">${msg || "등록 실패"}</div>`;
