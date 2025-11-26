@@ -89,6 +89,11 @@
 </div>
 
 <script>
+    // 한국 시간(KST) 기준 오늘 날짜 반환 (가장 정확하고 안전한 방법)
+    function getTodayKST() {
+        return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+    }
+
     const fmtKst = (dateStr) => new Date(dateStr).toLocaleString('ko-KR', {
         timeZone: 'Asia/Seoul',
         month: '2-digit', day: '2-digit',
@@ -110,20 +115,19 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getTodayKST();
         document.getElementById('startDate').value = today;
         document.getElementById('endDate').value = today;
         loadTourists();
     });
 
     window.resetDate = () => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getTodayKST();
         document.getElementById('startDate').value = today;
         document.getElementById('endDate').value = today;
         loadTourists();
     };
 
-    // 핵심: setTimeout + requestAnimationFrame 으로 메인 스레드 완전 해방!
     async function loadTourists() {
         const start = document.getElementById('startDate').value;
         const end   = document.getElementById('endDate').value;
@@ -155,15 +159,19 @@
             return;
         }
 
-        // 그룹화 (빠르게)
         let totalPeople = 0;
         const groups = {};
         data.forEach(t => {
             const key = t.guideId || t.guideName;
             if (!groups[key]) {
                 groups[key] = {
-                    info: { name: t.guideName, birth: t.guideBirth || '', phone: t.guidePhone || '',
-                        country: t.guideNationality || '', gender: t.guideGender },
+                    info: {
+                        name: t.guideName,
+                        birth: t.guideBirth || '',
+                        phone: t.guidePhone || '',
+                        country: t.guideNationality || '',
+                        gender: t.guideGender
+                    },
                     tourists: []
                 };
                 totalPeople++;
@@ -173,25 +181,37 @@
         });
         document.getElementById('totalCount').textContent = totalPeople + '명';
 
-        // 여기서부터 진짜 마법: 메인 스레드를 아예 안 막음!
         const fragment = document.createDocumentFragment();
         let no = 1;
 
         Object.values(groups).forEach(g => {
             const guideTr = document.createElement('tr');
             guideTr.className = 'guide-row';
-            guideTr.innerHTML = `<td><strong>${no++}</strong></td><td><strong>${escape(g.info.name)}</strong></td><td>${escape(g.info.birth || '-')}</td><td>${escape(g.info.phone || '-')}</td><td>${escape(g.info.country || '-')}</td><td><span class="badge ${getBadge(g.info.gender)}">${toKoreanGender(g.info.gender)}</span></td><td>-</td><td class="no-print">-</td>`;
+            guideTr.innerHTML = `<td><strong>${no++}</strong></td>
+                <td><strong>${escape(g.info.name)}</strong></td>
+                <td>${escape(g.info.birth || '-')}</td>
+                <td>${escape(g.info.phone || '-')}</td>
+                <td>${escape(g.info.country || '-')}</td>
+                <td><span class="badge ${getBadge(g.info.gender)}">${toKoreanGender(g.info.gender)}</span></td>
+                <td>-</td>
+                <td class="no-print">-</td>`;
             fragment.appendChild(guideTr);
 
             g.tourists.forEach(t => {
                 const tr = document.createElement('tr');
                 tr.className = 'tourist-row';
-                tr.innerHTML = `<td><strong>${no++}</strong></td><td><strong>${escape(t.name)}</strong></td><td>${escape(t.birth || '-')}</td><td>${escape(t.phone || '-')}</td><td>${escape(t.country || '-')}</td><td><span class="badge ${getBadge(t.gender)}">${toKoreanGender(t.gender)}</span></td><td>${fmtKst(t.time)}</td><td class="no-print"><button class="btn btn-danger btn-sm" onclick="deleteTourist('${t.id}',this)">삭제</button></td>`;
+                tr.innerHTML = `<td><strong>${no++}</strong></td>
+                    <td><strong>${escape(t.name)}</strong></td>
+                    <td>${escape(t.birth || '-')}</td>
+                    <td>${escape(t.phone || '-')}</td>
+                    <td>${escape(t.country || '-')}</td>
+                    <td><span class="badge ${getBadge(t.gender)}">${toKoreanGender(t.gender)}</span></td>
+                    <td>${fmtKst(t.time)}</td>
+                    <td class="no-print"><button class="btn btn-danger btn-sm" onclick="deleteTourist('${t.id}',this)">삭제</button></td>`;
                 fragment.appendChild(tr);
             });
         });
 
-        // 다음 프레임에 삽입 → 브라우저가 숨 쉴 틈을 줌 → 완전 부드러움!
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 tbody.appendChild(fragment);
@@ -209,7 +229,6 @@
         } catch { alert('삭제 실패'); }
     };
 
-    // 엑셀은 그대로
     window.downloadExcel = function(type) {
         const rows = Array.from(document.querySelectorAll('#touristBody tr'));
         const list = [];

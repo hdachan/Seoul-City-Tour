@@ -138,6 +138,7 @@
             let rows = '';
             guides.forEach((g, i) => {
                 const qrId = `qr_${g.id}`;
+                const formUrl = `${BASE}/tourist/register?guideId=${g.id}`;
                 rows += `
                 <tr>
                     <td class="text-center fw-bold">${i + 1}</td>
@@ -151,11 +152,18 @@
                     <td>${g.phone || '-'}</td>
                     <td>${g.nationality || '-'}</td>
                     <td class="text-center">${g.gender === 'MALE' ? '남' : '여'}</td>
-                    <td class="text-center" style="cursor:pointer;" title="클릭 시 해당 가이드 명단 보기"
-                        onclick="window.open('/admin/guide-tourists.html?guideId=${g.id}&name=${encodeURIComponent(g.name)}','_blank')">
+                    <td class="text-center" style="cursor:pointer;" title="클릭 시 관광객 등록 폼 열기"
+                        onclick="window.open('${formUrl}','_blank')">
                         <span class="today-count">${g.touristCount}명</span>
                     </td>
-                    <td class="text-center"><div id="${qrId}" class="qr-box"></div></td>
+                    <td class="text-center">
+                        <div id="${qrId}" class="qr-box"></div>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-success" onclick="window.open('${formUrl}','_blank')">
+                                <i class="bi bi-box-arrow-up-right"></i> 폼 열기
+                            </button>
+                        </div>
+                    </td>
                     <td class="text-center">
                         <button class="btn btn-sm btn-outline-secondary me-1"
                                 onclick="openEdit('${g.id}','${escapeHtml(g.loginId)}','${escapeHtml(g.name)}','${g.birth}','${g.phone||''}','${g.nationality||''}','${g.gender}')">
@@ -182,7 +190,7 @@
                                 <th>국적</th>
                                 <th>성별</th>
                                 <th class="text-center">오늘 등록된 관광객</th>
-                                <th>QR코드</th>
+                                <th>QR코드 / 폼</th>
                                 <th>작업</th>
                             </tr>
                         </thead>
