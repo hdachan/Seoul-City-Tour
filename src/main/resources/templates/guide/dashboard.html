@@ -21,7 +21,7 @@
         .control-panel { background: white; border-radius: 14px; padding: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: center; margin: 20px 0; }
         .table th, .table td { text-align: center; vertical-align: middle; }
         .table th { background: #e7f3ff; color: #1e40af; font-weight: 600; font-size: 0.9rem; }
-        @media (max-width: 480px) { .table th, .table td { font-size: 0.84rem; padding: 8px 4px; } .table th:nth-child(7), .table td:nth-child(7) { display: none; } }
+        @media (max-width: 480px) { .table th, .table td { font-size: 0.84rem; padding: 8px 4px; } }
         @media print {
             body { background: white !important; padding: 0 !important; }
             .no-print, .btn-logout, .control-panel, .foldable-card { display: none !important; }
@@ -35,10 +35,55 @@
         .print-area { display: none; }
         .alert { border-radius: 12px; }
         .print-header-table, .print-header-table th, .print-header-table td { border: 1px solid #888; border-collapse: collapse; }
+
+        /* 나라 선택 팝업 */
+        .country-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
+        .country-modal-overlay.show { display:flex; }
+        .country-modal { background:white; border-radius:20px; padding:28px 24px; width:320px; max-width:90vw; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+        .country-modal h5 { font-weight:700; margin-bottom:18px; text-align:center; color:#1e40af; }
+        .country-btn { border-radius:12px; padding:14px; font-size:1.05rem; font-weight:600; margin-bottom:10px; width:100%; border:2px solid #e5e7eb; background:white; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:12px; }
+        .country-btn:hover { border-color:#0d6efd; background:#eff6ff; }
+        .country-btn .flag { font-size:1.5rem; }
+        .country-btn-cancel { margin-top:4px; border-color:#e5e7eb; color:#6b7280; }
     </style>
     <link href="https://cdn.jsdelivr.net/npm/@fontsource/pretendard@1.0.0/index.css" rel="stylesheet">
 </head>
 <body>
+
+
+<!-- 수정 모달 -->
+<div class="country-modal-overlay" id="editModal">
+    <div class="country-modal" style="width:360px;">
+        <h5>✏️ 관광객 정보 수정</h5>
+        <input type="hidden" id="editTouristId">
+        <div class="mb-3">
+            <label class="form-label small fw-bold">이름 (Name)</label>
+            <input type="text" class="form-control" id="editName" placeholder="홍길동">
+        </div>
+        <div class="mb-3">
+            <label class="form-label small fw-bold">생년월일 (Birthday)</label>
+            <input type="text" class="form-control" id="editBirth"
+                   placeholder="19900101" maxlength="8"
+                   oninput="this.value=this.value.replace(/\D/g,'')">
+            <div class="form-text text-muted">숫자 8자리 (예: 19900101)</div>
+        </div>
+        <button class="country-btn" style="background:#198754;color:white;border-color:#198754;" onclick="submitEdit()">💾 저장</button>
+        <button class="country-btn country-btn-cancel" onclick="closeEditModal()">✕ 취소</button>
+        <div id="editAlert" class="mt-2"></div>
+    </div>
+</div>
+
+<!-- 나라 선택 팝업 -->
+<div class="country-modal-overlay" id="countryModal">
+    <div class="country-modal">
+        <h5>🌏 국가 선택</h5>
+        <p class="text-muted small text-center mb-3">엑셀에 적용할 외국인 국가를 선택하세요</p>
+        <button class="country-btn" onclick="downloadExcel('중국')"><span class="flag">🇨🇳</span> 중국 (China)</button>
+        <button class="country-btn" onclick="downloadExcel('일본')"><span class="flag">🇯🇵</span> 일본 (Japan)</button>
+        <button class="country-btn" onclick="downloadExcel('미국')"><span class="flag">🇺🇸</span> 미국 (USA)</button>
+        <button class="country-btn country-btn-cancel" onclick="closeCountryModal()">✕ 취소</button>
+    </div>
+</div>
 
 <div class="container-fluid px-2">
     <div class="no-print">
@@ -81,15 +126,16 @@
             <div class="card-body-fold" id="section-form">
                 <form id="registerForm">
                     <div class="row g-3">
-                        <div class="col-12 col-md-6"><label class="form-label small fw-bold">이름</label><input type="text" class="form-control" name="name" required></div>
-                        <div class="col-12 col-md-6"><label class="form-label small fw-bold">생년월일</label><input type="date" class="form-control" name="birth"></div>
-                        <div class="col-12 col-md-6"><label class="form-label small fw-bold">연락처</label><input type="text" class="form-control" name="phone" placeholder="010-1234-5678"></div>
-                        <div class="col-12 col-md-6"><label class="form-label small fw-bold">국적</label><input type="text" class="form-control" name="country" value="대한민국"></div>
-                        <div class="col-12 col-md-6"><label class="form-label small fw-bold">성별</label>
-                            <select class="form-select" name="gender">
-                                <option value="MALE">남자</option>
-                                <option value="FEMALE" selected>여자</option>
-                            </select>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">이름 (Name)</label>
+                            <input type="text" class="form-control" name="name" required placeholder="홍길동">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-bold">생년월일 (Birthday)</label>
+                            <input type="text" class="form-control" name="birth" required
+                                   placeholder="19900101" maxlength="8" pattern="\d{8}"
+                                   oninput="this.value=this.value.replace(/\D/g,'')">
+                            <div class="form-text text-muted">숫자 8자리 입력 (예: 19900101)</div>
                         </div>
                         <div class="col-12">
                             <button type="submit" class="btn btn-success w-100 btn-register-submit">등록하기</button>
@@ -103,6 +149,7 @@
         <div class="control-panel">
             <input type="text" id="filterDate" class="form-control form-control-sm" style="width:140px;" readonly placeholder="날짜 선택">
             <button id="btnSearch" class="btn btn-primary">조회</button>
+            <button id="btnExcel" class="btn btn-success">📥 엑셀 다운</button>
             <button id="btnPrint" class="btn btn-secondary">출력</button>
         </div>
     </div>
@@ -134,33 +181,178 @@
     </div>
 </div>
 
-<!-- 모든 외부 스크립트 먼저 로드 -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/js/datepicker-full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-<!-- 우리 스크립트는 제일 마지막에! 그래야 toggleSection 오류 안 남 -->
 <script th:inline="javascript">
-    const guideId = /*[[${guide.id}]]*/ null;
+    const guideId   = /*[[${guide.id}]]*/ null;
     const guideName = /*[[${guide.name}]]*/ '가이드';
+    const guidePhone = /*[[${guide.phone ?: ''}]]*/ '';
+    const guideBirth = /*[[${guide.birth != null ? guide.birth.toString().replace('-','') : ''}]]*/ '';
 
-    function toKoreaTime(utcString) {
-        const date = new Date(utcString);
-        const kstOffset = 9 * 60 * 60 * 1000;
-        return new Date(date.getTime() + kstOffset);
+    // 서버가 이미 한국 시간(Asia/Seoul) 자체를 LocalDateTime으로 저장하므로
+    // 타임존 오프셋을 추가로 더하지 않고 그대로 파싱한다.
+    function toKoreaTime(timeString) {
+        return new Date(timeString);
     }
 
     const now = new Date();
     now.setHours(now.getHours() + 9);
     const today = now.toISOString().split('T')[0];
 
-    // toggleSection 전역 함수 먼저 정의 (이게 핵심!)
+    let currentFilteredData = [];
+    let currentFilterDate = today;
+
     window.toggleSection = function(id) {
         const body = document.getElementById('section-' + id);
         const icon = document.getElementById('icon-' + id);
         body.classList.toggle('show');
         icon.classList.toggle('bi-chevron-down');
         icon.classList.toggle('bi-chevron-up');
+    };
+
+
+    // ── 수정 모달 ──
+    window.openEditModal = function(id, name, birth) {
+        document.getElementById('editTouristId').value = id;
+        document.getElementById('editName').value = name;
+        document.getElementById('editBirth').value = (birth || '').replace(/-/g, '');
+        document.getElementById('editAlert').innerHTML = '';
+        document.getElementById('editModal').classList.add('show');
+    };
+    window.closeEditModal = function() {
+        document.getElementById('editModal').classList.remove('show');
+    };
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal();
+    });
+    window.submitEdit = async function() {
+        const id = document.getElementById('editTouristId').value;
+        const name = document.getElementById('editName').value.trim();
+        const birthRaw = document.getElementById('editBirth').value.trim();
+
+        if (!name) {
+            document.getElementById('editAlert').innerHTML = '<div class="alert alert-warning py-1 px-2 small">이름을 입력해주세요.</div>';
+            return;
+        }
+        if (birthRaw && birthRaw.length !== 8) {
+            document.getElementById('editAlert').innerHTML = '<div class="alert alert-warning py-1 px-2 small">생년월일은 8자리로 입력해주세요.</div>';
+            return;
+        }
+
+        if (birthRaw) {
+            const ey = parseInt(birthRaw.slice(0,4));
+            const em = parseInt(birthRaw.slice(4,6));
+            const ed = parseInt(birthRaw.slice(6,8));
+            if (em < 1 || em > 12 || ed < 1 || ed > 31 || ey < 1900 || ey > new Date().getFullYear()) {
+                document.getElementById('editAlert').innerHTML = '<div class="alert alert-warning py-1 px-2 small">올바른 생년월일을 입력해주세요. (예: 19900101)</div>';
+                return;
+            }
+        }
+
+        const birth = birthRaw ? birthRaw.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : null;
+
+        try {
+            const res = await fetch(`/api/tourists/my/${id}?guideId=${guideId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, birth })
+            });
+            if (res.ok) {
+                closeEditModal();
+                loadTourists(currentFilterDate);
+            } else {
+                const msg = await res.text();
+                document.getElementById('editAlert').innerHTML = `<div class="alert alert-danger py-1 px-2 small">${msg || '수정 실패'}</div>`;
+            }
+        } catch {
+            document.getElementById('editAlert').innerHTML = '<div class="alert alert-danger py-1 px-2 small">네트워크 오류</div>';
+        }
+    };
+
+    // ── 삭제 ──
+    window.deleteTourist = async function(id, name) {
+        if (!confirm(`"${name}" 을(를) 삭제하시겠습니까?`)) return;
+        try {
+            const res = await fetch(`/api/tourists/my/${id}?guideId=${guideId}`, { method: 'DELETE' });
+            if (res.ok) {
+                loadTourists(currentFilterDate);
+            } else {
+                const msg = await res.text();
+                alert('삭제 실패: ' + msg);
+            }
+        } catch {
+            alert('네트워크 오류');
+        }
+    };
+
+    // ── 나라 선택 팝업 ──
+    window.openCountryModal = function() {
+        document.getElementById('countryModal').classList.add('show');
+    };
+    window.closeCountryModal = function() {
+        document.getElementById('countryModal').classList.remove('show');
+    };
+    document.getElementById('countryModal').addEventListener('click', function(e) {
+        if (e.target === this) closeCountryModal();
+    });
+
+    // ── 엑셀 다운로드 ──
+    window.downloadExcel = function(selectedCountry) {
+        closeCountryModal();
+
+        const countryCodeMap = { '중국': '86', '일본': '81', '미국': '1' };
+        const countryCode = countryCodeMap[selectedCountry] || '82';
+        const foreignLabel = '외국인';
+
+        // 헤더
+        const headers = ['성명', '성별', '생년월일', '휴대폰번호', '국가번호', '내/외국인', '국가/지역', '요금'];
+
+        // 1행: 가이드
+        const guideRow = [
+            guideName,
+            '남',
+            guideBirth,
+            guidePhone.replace(/-/g, ''),
+            '82',
+            '외국인',
+            selectedCountry,
+            '가이드'
+        ];
+
+        // 나머지: 관광객
+        const touristRows = currentFilteredData.map(t => {
+            const gender = (t.gender === 'FEMALE') ? '여' : '남';
+            const birth = (t.birth || '').replace(/-/g, '');
+            return [
+                t.name,
+                gender,
+                birth,
+                guidePhone.replace(/-/g, ''),
+                countryCode,
+                foreignLabel,
+                selectedCountry,
+                '일반'
+            ];
+        });
+
+        const wsData = [headers, guideRow, ...touristRows];
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        // 컬럼 너비
+        ws['!cols'] = [
+            {wch:14}, {wch:6}, {wch:12}, {wch:14},
+            {wch:8}, {wch:10}, {wch:12}, {wch:8}
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, '관광객명단');
+
+        const dateStr = currentFilterDate.replace(/-/g, '');
+        XLSX.writeFile(wb, `${guideName}_${dateStr}_${selectedCountry}.xlsx`);
     };
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -189,13 +381,24 @@
                 });
         };
 
-        // 등록 폼 제출 (이제 정확한 URL)
+        // 등록 폼 제출
         document.getElementById('registerForm').onsubmit = async (e) => {
             e.preventDefault();
-
             const formData = new FormData(e.target);
             const data = Object.fromEntries(formData);
-            data.guideId = guideId + '';  // 문자열로 강제
+            data.guideId = guideId + '';
+            if (!data.gender) data.gender = 'MALE';
+            if (data.birth && data.birth.length === 8) {
+                const y = parseInt(data.birth.slice(0,4));
+                const m = parseInt(data.birth.slice(4,6));
+                const d = parseInt(data.birth.slice(6,8));
+                if (m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > new Date().getFullYear()) {
+                    document.getElementById('formAlert').innerHTML =
+                        '<div class="alert alert-warning alert-dismissible fade show">올바른 생년월일을 입력해주세요. (예: 19900101)<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+                    return;
+                }
+                data.birth = data.birth.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3');
+            }
 
             try {
                 const res = await fetch('/api/tourists/register', {
@@ -203,13 +406,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-
                 if (res.ok) {
                     document.getElementById('formAlert').innerHTML =
                         '<div class="alert alert-success alert-dismissible fade show">등록 완료!<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
                     e.target.reset();
-                    const currentDate = dateInput.value || today;
-                    loadTourists(currentDate);
+                    loadTourists(dateInput.value || today);
                 } else {
                     const errorText = await res.text();
                     throw new Error(errorText || '등록 실패');
@@ -220,24 +421,26 @@
             }
         };
 
-        async function loadTourists(date = today) {
-            const url = date ? `/api/tourists?date=${date}&guideId=${guideId}` : `/api/tourists?guideId=${guideId}`;
+        window.loadTourists = async function(date = today) {
+            currentFilterDate = date;
+            const url = `/api/tourists?date=${date}&guideId=${guideId}`;
             const res = await fetch(url);
             const data = await res.json();
 
-            const todayCount = data.filter(t => toKoreaTime(t.time).toISOString().startsWith(today)).length;
+            // t.time은 "yyyy-MM-ddTHH:mm:ss..." 형태의 한국시간 문자열이므로 앞 10자리만 비교
+            const todayCount = data.filter(t => t.time.slice(0, 10) === today).length;
             document.getElementById('countValue').textContent = todayCount;
 
-            const filtered = date
-                ? data.filter(t => toKoreaTime(t.time).toISOString().startsWith(date))
-                : data.filter(t => toKoreaTime(t.time).toISOString().startsWith(today));
+            const filtered = data.filter(t => t.time.slice(0, 10) === date);
+            filtered.sort((a, b) => a.name.localeCompare(b.name));
+            currentFilteredData = filtered;
 
             renderTable(filtered, 'touristList');
             renderTable(filtered, 'printTable');
             document.getElementById('printPassengerCount').textContent = filtered.length;
         }
 
-        function renderTable(data, containerId) {
+        window.renderTable = function(data, containerId) {
             const container = document.getElementById(containerId);
             if (!data.length) {
                 container.innerHTML = `<div class="text-center py-5 text-muted"><h5>등록된 관광객이 없습니다</h5></div>`;
@@ -251,17 +454,20 @@
                         <td class="fw-bold">${i + 1}</td>
                         <td class="fw-bold">${t.name}</td>
                         <td>${t.birth || '-'}</td>
-                        <td>${t.phone || '-'}</td>
-                        <td>${t.country || '-'}</td>
-                        <td>${t.gender === 'MALE' ? '남' : '여'}</td>
                         <td class="text-muted small">${timeStr}</td>
+                        <td>
+                            <button class="btn btn-outline-primary btn-sm py-0 px-2 me-1"
+                                onclick="openEditModal('${t.id}','${t.name}','${t.birth||''}')">✏️</button>
+                            <button class="btn btn-outline-danger btn-sm py-0 px-2"
+                                onclick="deleteTourist('${t.id}','${t.name}')">🗑️</button>
+                        </td>
                     </tr>`;
             }).join('');
 
             container.innerHTML = `
                 <div class="table-responsive rounded shadow-sm overflow-hidden">
                     <table class="table table-hover align-middle mb-0">
-                        <thead><tr><th>#</th><th>이름</th><th>생년월일</th><th>연락처</th><th>국적</th><th>성별</th><th>등록시간</th></tr></thead>
+                        <thead><tr><th>#</th><th>이름</th><th>생년월일</th><th>등록시간</th><th>관리</th></tr></thead>
                         <tbody>${rows}</tbody>
                     </table>
                 </div>`;
@@ -273,6 +479,7 @@
             printDateLabel.innerText = date === today ? '기준일: 오늘' : '기준일: ' + date.replace(/-/g, '. ');
         };
 
+        document.getElementById('btnExcel').onclick = () => openCountryModal();
         document.getElementById('btnPrint').onclick = () => setTimeout(() => window.print(), 300);
 
         loadTourists(today);

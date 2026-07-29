@@ -40,8 +40,7 @@
     <div class="d-flex justify-content-between align-items-center my-4">
         <h4 class="text-success fw-bold m-0">보험가입을 위한 명단 출력 & 인솔자별 QR출력</h4>
         <div class="btn-group">
-            <button class="btn btn-success btn-sm" onclick="downloadExcel('insurance')">보험용 엑셀</button>
-            <button class="btn btn-info btn-sm text-white" onclick="downloadExcel('paju')">파주시용 엑셀</button>
+            <button class="btn btn-success btn-sm" onclick="downloadExcel()">엑셀다운로드</button>
             <button class="btn btn-secondary btn-sm" onclick="window.print()">인쇄</button>
         </div>
     </div>
@@ -187,6 +186,8 @@
         Object.values(groups).forEach(g => {
             const guideTr = document.createElement('tr');
             guideTr.className = 'guide-row';
+            // 인솔자 행에도 그룹 내 첫 관광객의 등록시간을 날짜 기준으로 심어둠 (월별 엑셀 그룹핑용)
+            if (g.tourists[0]) guideTr.dataset.date = g.tourists[0].time;
             guideTr.innerHTML = `<td><strong>${no++}</strong></td>
                 <td><strong>${escape(g.info.name)}</strong></td>
                 <td>${escape(g.info.birth || '-')}</td>
@@ -200,6 +201,7 @@
             g.tourists.forEach(t => {
                 const tr = document.createElement('tr');
                 tr.className = 'tourist-row';
+                tr.dataset.date = t.time; // 월별 엑셀 그룹핑용 원본 날짜 저장
                 tr.innerHTML = `<td><strong>${no++}</strong></td>
                     <td><strong>${escape(t.name)}</strong></td>
                     <td>${escape(t.birth || '-')}</td>
@@ -229,40 +231,42 @@
         } catch { alert('삭제 실패'); }
     };
 
-    window.downloadExcel = function(type) {
+    window.downloadExcel = function() {
         const rows = Array.from(document.querySelectorAll('#touristBody tr'));
-        const list = [];
+        const groups = {};
+        let currentDate = null;
 
         rows.forEach(r => {
             const c = r.cells;
+            if (r.dataset.date) currentDate = r.dataset.date.slice(0, 10); // YYYY-MM-DD
+            const dateKey = currentDate || '날짜미상';
+
             const name = c[1].querySelector('strong')?.textContent.trim() || c[1].textContent.trim();
             const birth = c[2].textContent.trim() === '-' ? '' : c[2].textContent.trim();
-            const phone = c[3].textContent.trim();
-            const country = c[4].textContent.trim();
-            const krGender = c[5].querySelector('.badge')?.textContent.trim() || '';
-            const gender = krGender === '남' ? 'M' : krGender === '여' ? 'F' : '';
 
-            list.push({ no: c[0].textContent.trim(), name, birth, phone, country, gender });
+            (groups[dateKey] ??= []).push({ name, birth });
         });
 
-        const headers = type === 'insurance'
-            ? ['No.', 'NAME', 'Date of Birth', 'Gender']
-            : ['No.', 'NAME', 'Date of Birth', 'Phone No.', 'Nationality', 'Gender'];
+        const headers = ['NAME', 'Date of Birth'];
 
-        const excelData = list.map(d => type === 'insurance'
-            ? [d.no, d.name, d.birth, d.gender]
-            : [d.no, d.name, d.birth, d.phone, d.country, d.gender]);
+        const aoa = [];
+        Object.keys(groups).sort().forEach(dateKey => {
+            aoa.push([dateKey]);
+            aoa.push(headers);
+            groups[dateKey].forEach(d => {
+                aoa.push([d.name, d.birth]);
+            });
+            aoa.push([]); // 날짜 그룹 사이 빈 줄
+        });
 
-        const ws = XLSX.utils.aoa_to_sheet([headers, ...excelData]);
-        ws['!cols'] = type === 'insurance'
-            ? [{wch:6}, {wch:22}, {wch:15}, {wch:8}]
-            : [{wch:6}, {wch:22}, {wch:15}, {wch:16}, {wch:14}, {wch:8}];
+        const ws = XLSX.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = [{wch:22}, {wch:15}];
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '명단');
         const s = document.getElementById('startDate').value || 'all';
         const e = document.getElementById('endDate').value || 'all';
-        XLSX.writeFile(wb, `관광객명단_${type==='insurance'?'보험용':'파주시용'}_${s}_to_${e}.xlsx`);
+        XLSX.writeFile(wb, `관광객명단_${s}_to_${e}.xlsx`);
     };
 </script>
 </body>

@@ -5,68 +5,71 @@
     <title>관광객 등록</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Flatpickr CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/material_green.css">
     <style>
         body { background:#f8f9fa; padding:30px; font-family:system-ui,-apple-system,sans-serif; }
         .card { max-width:500px; margin:50px auto; border:none; box-shadow:0 12px 35px rgba(0,0,0,0.12); border-radius:18px; overflow:hidden; }
         .header { background:#198754; color:white; padding:1.2rem; font-weight:600; }
-        .lang-select { max-width:120px; font-size:0.9rem; }
         .form-label { font-weight:600; color:#1f2937; }
-        .form-control, .form-select { border-radius:10px; padding:0.65rem 0.9rem; }
-        .flatpickr-input { background:white !important; }
+        .field-num { color:#198754; font-size:1rem; margin-right:6px; }
+        .form-control, .form-select { border-radius:10px; padding:0.65rem 0.9rem; font-size:1rem; }
+        .form-text { color:#6b7280; font-size:0.85rem; margin-top:4px; }
         .btn-success { border-radius:14px; font-weight:700; padding:0.9rem; font-size:1.1rem; }
         .alert { border-radius:12px; }
+        .person-card { background:#f8fafc; border:2px solid #e5e7eb; border-radius:14px; padding:18px; margin-bottom:16px; }
+        .person-card .person-title { font-weight:700; color:#198754; margin-bottom:12px; font-size:0.95rem; }
+        .count-select-wrap { background:#eff6ff; border-radius:14px; padding:16px; margin-bottom:20px; }
+
+        /* 완료 팝업 */
+        .success-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center; }
+        .success-overlay.show { display:flex; }
+        .success-box { background:white; border-radius:24px; padding:40px 32px; text-align:center; max-width:320px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,0.3); animation: popIn 0.3s ease; }
+        @keyframes popIn { from { transform:scale(0.8); opacity:0; } to { transform:scale(1); opacity:1; } }
+        .success-icon { font-size:4rem; margin-bottom:12px; }
+        .success-title { font-size:1.5rem; font-weight:800; color:#198754; margin-bottom:8px; }
+        .success-sub { color:#6b7280; font-size:0.95rem; margin-bottom:24px; }
+        .success-close { border-radius:12px; font-weight:700; padding:12px 32px; font-size:1rem; }
     </style>
 </head>
 <body>
 
+<!-- 완료 팝업 -->
+<div class="success-overlay" id="successOverlay">
+    <div class="success-box">
+        <div class="success-icon">✅</div>
+        <div class="success-title">Registration Complete!</div>
+        <div class="success-sub" id="successSub">1 guest registered.</div>
+        <button class="btn btn-success success-close w-100" onclick="closeSuccess()">OK</button>
+    </div>
+</div>
+
 <div class="card">
-    <div class="card-header header text-center d-flex justify-content-between align-items-center px-4">
-        <h4 id="guideName" class="mb-0 fw-bold" th:text="${guide?.name} + ' 가이드'">로딩중...</h4>
-        <select id="langSelect" class="form-select form-select-sm lang-select">
-            <option value="ko">한국어</option>
-            <option value="en">English</option>
-            <option value="zh">中文</option>
-            <option value="ja">日本語</option>
-        </select>
+    <div class="card-header header text-center px-4 py-3">
+        <h4 class="mb-0 fw-bold" th:text="${guide?.name} + ' 가이드'">로딩중...</h4>
     </div>
 
     <div class="card-body p-4">
+
+        <!-- 인원수 선택 -->
+        <div class="count-select-wrap">
+            <label class="form-label mb-2">👥 Number of People</label>
+            <select class="form-select" id="peopleCount">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+            </select>
+            <div class="form-text">Registering for a family or group? Select the number of people.</div>
+        </div>
+
         <form id="touristForm">
             <input type="hidden" id="guideId" th:value="${param.guideId} ?: ${guide?.id}">
-
-            <div class="mb-3">
-                <label class="form-label" id="labelName">이름 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="name" required>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label" id="labelBirth">생년월일 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control flatpickr-input" id="birth" placeholder="날짜를 선택하세요" readonly required>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label" id="labelPhone">전화번호 <span class="text-danger">*</span></label>
-                <input type="tel" class="form-control" id="phone">
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label" id="labelCountry">국적 <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="country" placeholder="중국">
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label" id="labelGender">성별</label>
-                <select class="form-select" id="gender">
-                    <option value="MALE">남</option>
-                    <option value="FEMALE">여</option>
-                </select>
-            </div>
-
+            <div id="peopleContainer"></div>
             <div class="d-grid mt-4">
-                <button type="submit" class="btn btn-success btn-lg shadow-sm" id="submitBtn">등록 완료</button>
+                <button type="submit" class="btn btn-success btn-lg shadow-sm" id="submitBtn">Submit</button>
             </div>
         </form>
 
@@ -74,68 +77,45 @@
     </div>
 </div>
 
-<!-- Flatpickr JS + 언어 파일들 -->
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/zh.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ja.js"></script>
-
 <script>
-    const texts = {
-        ko: { name:"이름", birth:"생년월일", phone:"전화번호", country:"국적", gender:"성별", male:"남", female:"여", submit:"등록 완료", success:"등록 완료!", placeholderCountry:"중국", placeholderDate:"날짜를 선택하세요" },
-        en: { name:"Name", birth:"Date of Birth", phone:"Phone", country:"Nationality", gender:"Gender", male:"Male", female:"Female", submit:"Register", success:"Registration Complete!", placeholderCountry:"China", placeholderDate:"Select date" },
-        zh: { name:"姓名", birth:"出生日期", phone:"电话", country:"国籍", gender:"性别", male:"男", female:"女", submit:"完成注册", success:"注册成功！", placeholderCountry:"中国", placeholderDate:"选择日期" },
-        ja: { name:"名前", birth:"生年月日", phone:"電話番号", country:"国籍", gender:"性別", male:"男性", female:"女性", submit:"登録完了", success:"登録が完了しました！", placeholderCountry:"中国", placeholderDate:"日付を選択" }
-    };
-
-    const flatpickrLocales = {
-        ko: flatpickr.l10ns.ko,
-        en: flatpickr.l10ns.en,
-        zh: flatpickr.l10ns.zh,
-        ja: flatpickr.l10ns.ja
-    };
-
-    let lang = 'ko';
     const urlParams = new URLSearchParams(location.search);
-    const urlLang = urlParams.get('lang');
-    if (['en','zh','ja'].includes(urlLang)) lang = urlLang;
+    let isSubmitting = false;
 
-    let fp;
-
-    function initFlatpickr() {
-        if (fp) fp.destroy();
-        fp = flatpickr("#birth", {
-            locale: flatpickrLocales[lang] || flatpickr.l10ns.ko,
-            dateFormat: "Y-m-d",
-            maxDate: "today",
-            allowInput: false,
-            clickOpens: true,
-            disableMobile: true
-        });
-        document.getElementById('birth').placeholder = texts[lang].placeholderDate;
+    function buildPersonCard(index) {
+        return `
+            <div class="person-card">
+                <div class="person-title">👤 Guest ${index}</div>
+                <div class="mb-3">
+                    <label class="form-label">
+                        <span class="field-num">1.</span> Name <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" class="form-control person-name" placeholder="ex. Amy Park" required>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label">
+                        <span class="field-num">2.</span> Birthday (ex. yyyymmdd) <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" class="form-control person-birth"
+                           placeholder="ex. 19880121" maxlength="8" inputmode="numeric" required>
+                    <div class="form-text">Please enter 8 digits &nbsp;(YYYYMMDD)</div>
+                </div>
+            </div>`;
     }
 
-    function applyLang(l) {
-        lang = l;
-        const t = texts[l];
+    function renderPeopleForm(count) {
+        const container = document.getElementById('peopleContainer');
+        let html = '';
+        for (let i = 1; i <= count; i++) html += buildPersonCard(i);
+        container.innerHTML = html;
+        document.querySelectorAll('.person-birth').forEach(input => {
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/\D/g, '');
+            });
+        });
+    }
 
-        document.getElementById('labelName').firstChild.textContent = t.name + ' ';
-        document.getElementById('labelBirth').firstChild.textContent = t.birth + ' ';
-        document.getElementById('labelPhone').textContent = t.phone + ' *';
-        document.getElementById('labelCountry').textContent = t.country + ' *';
-        document.getElementById('labelGender').textContent = t.gender;
-        document.getElementById('submitBtn').textContent = t.submit;
-        document.getElementById('country').placeholder = t.placeholderCountry;
-
-        const opts = document.getElementById('gender').options;
-        opts[0].text = t.male;   opts[0].value = "MALE";
-        opts[1].text = t.female; opts[1].value = "FEMALE";
-
-        initFlatpickr();
-
-        const newUrl = new URL(location);
-        newUrl.searchParams.set('lang', l);
-        history.replaceState(null, '', newUrl);
+    function closeSuccess() {
+        document.getElementById('successOverlay').classList.remove('show');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -145,83 +125,109 @@
 
         if (!input.value || input.value.trim() === '' || input.value === 'null') {
             document.getElementById('result').innerHTML =
-                '<div class="alert alert-danger text-center"><strong>오류:</strong> QR 코드를 통해 접근해주세요.</div>';
+                '<div class="alert alert-danger text-center"><strong>Error:</strong> Please access via QR code.</div>';
             document.getElementById('touristForm').style.display = 'none';
-            document.querySelector('.card-header').insertAdjacentHTML('beforeend',
-                '<div class="alert alert-warning mt-2 mb-0">잘못된 접근입니다</div>');
+            document.querySelector('.count-select-wrap').style.display = 'none';
             return;
         }
 
-        document.getElementById('langSelect').value = lang;
-        applyLang(lang);
+        renderPeopleForm(1);
+
+        document.getElementById('peopleCount').addEventListener('change', e => {
+            renderPeopleForm(parseInt(e.target.value));
+        });
     });
 
-    document.getElementById('langSelect').onchange = e => applyLang(e.target.value);
-
-    // 전화번호 + 국적 필수 체크 추가된 최종 제출 로직
     document.getElementById('touristForm').onsubmit = async e => {
         e.preventDefault();
-        const t = texts[lang];
 
-        // 전화번호 필수 체크
-        const phoneValue = document.getElementById('phone').value.trim();
-        if (phoneValue === '') {
-            document.getElementById('result').innerHTML =
-                '<div class="alert alert-warning text-center">전화번호를 입력해주세요.</div>';
-            document.getElementById('phone').focus();
-            return;
-        }
-
-        // 국적 필수 체크
-        const countryValue = document.getElementById('country').value.trim();
-        if (countryValue === '') {
-            document.getElementById('result').innerHTML =
-                '<div class="alert alert-warning text-center">국적을 입력해주세요.</div>';
-            document.getElementById('country').focus();
-            return;
-        }
+        // 중복 제출 방지
+        if (isSubmitting) return;
 
         const guideId = document.getElementById('guideId').value.trim();
         if (!guideId || guideId === 'null') {
             document.getElementById('result').innerHTML =
-                `<div class="alert alert-danger text-center">가이드 정보가 없습니다.</div>`;
+                '<div class="alert alert-danger text-center">Guide information is missing.</div>';
             return;
         }
 
-        if (!document.getElementById('birth').value) {
-            document.getElementById('result').innerHTML =
-                `<div class="alert alert-danger text-center">생년월일을 선택해주세요.</div>`;
-            return;
+        const nameInputs = document.querySelectorAll('.person-name');
+        const birthInputs = document.querySelectorAll('.person-birth');
+        const people = [];
+
+        for (let i = 0; i < nameInputs.length; i++) {
+            const name = nameInputs[i].value.trim();
+            const birthRaw = birthInputs[i].value.trim();
+            const num = i + 1;
+
+            if (!name) {
+                document.getElementById('result').innerHTML =
+                    `<div class="alert alert-warning text-center">Please enter the name for Guest ${num}.</div>`;
+                nameInputs[i].focus();
+                return;
+            }
+            if (birthRaw.length !== 8) {
+                document.getElementById('result').innerHTML =
+                    `<div class="alert alert-warning text-center">Please enter Guest ${num}'s birthday as 8 digits (e.g. 19880121).</div>`;
+                birthInputs[i].focus();
+                return;
+            }
+            const by = parseInt(birthRaw.slice(0,4));
+            const bm = parseInt(birthRaw.slice(4,6));
+            const bd = parseInt(birthRaw.slice(6,8));
+            if (bm < 1 || bm > 12 || bd < 1 || bd > 31 || by < 1900 || by > new Date().getFullYear()) {
+                document.getElementById('result').innerHTML =
+                    `<div class="alert alert-warning text-center">Please enter a valid birthday for Guest ${num}. (e.g. 19880121)</div>`;
+                birthInputs[i].focus();
+                return;
+            }
+
+            people.push({
+                guideId,
+                name,
+                birth: birthRaw.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
+                gender: 'MALE'
+            });
         }
 
-        const payload = {
-            guideId: guideId,
-            name: document.getElementById('name').value.trim(),
-            birth: document.getElementById('birth').value,
-            phone: phoneValue,
-            country: countryValue,
-            gender: document.getElementById('gender').value
-        };
+        // 버튼 비활성화 + 로딩 표시
+        isSubmitting = true;
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+        document.getElementById('result').innerHTML = '';
 
         try {
-            const res = await fetch('/api/tourists/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            const result = document.getElementById('result');
-            if (res.ok) {
-                result.innerHTML = `<div class="alert alert-success text-center fs-5 fw-bold">${t.success}</div>`;
-                e.target.reset();
-                fp.clear();
-            } else {
-                const msg = await res.text();
-                result.innerHTML = `<div class="alert alert-danger text-center">${msg || "등록 실패"}</div>`;
+            for (const payload of people) {
+                const res = await fetch('/api/tourists/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const msg = await res.text();
+                    throw new Error(msg || 'Registration failed.');
+                }
             }
+
+            // 완료 팝업 표시
+            document.getElementById('successSub').textContent =
+                `${people.length} ${people.length > 1 ? 'guests' : 'guest'} registered successfully.`;
+            document.getElementById('successOverlay').classList.add('show');
+
+            // 폼 초기화
+            e.target.reset();
+            document.getElementById('peopleCount').value = '1';
+            renderPeopleForm(1);
+
         } catch (err) {
             document.getElementById('result').innerHTML =
-                `<div class="alert alert-danger text-center">네트워크 오류가 발생했습니다.</div>`;
+                `<div class="alert alert-danger text-center">${err.message || 'Network error. Please try again.'}</div>`;
+        } finally {
+            // 버튼 복구
+            isSubmitting = false;
+            btn.disabled = false;
+            btn.innerHTML = 'Submit';
         }
     };
 </script>

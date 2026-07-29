@@ -4,6 +4,7 @@ package org.example.seoulcitytourdemo.controller.api;
 import lombok.RequiredArgsConstructor;
 import org.example.seoulcitytourdemo.dto.TouristDto;
 import org.example.seoulcitytourdemo.dto.TouristRegisterRequest;
+import org.example.seoulcitytourdemo.dto.TouristUpdateRequest;
 import org.example.seoulcitytourdemo.entity.Guide;
 import org.example.seoulcitytourdemo.entity.Tourist;
 import org.example.seoulcitytourdemo.repository.GuideRepository;
@@ -26,7 +27,6 @@ public class TouristApiController {
     private final TouristRepository touristRepository;
     private final GuideRepository guideRepository;
 
-    // 서울 시간대를 상수로 정의 → 모든 곳에서 동일하게 사용
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
 
@@ -40,7 +40,6 @@ public class TouristApiController {
                 ? LocalDate.parse(date)
                 : LocalDate.now(SEOUL);
 
-        // 반드시 서울 시간대 기준으로 범위 설정!
         LocalDateTime start = targetDate.atStartOfDay(SEOUL).toLocalDateTime();
         LocalDateTime end   = targetDate.plusDays(1).atStartOfDay(SEOUL).toLocalDateTime();
 
@@ -70,7 +69,6 @@ public class TouristApiController {
             LocalDate s = LocalDate.parse(start);
             LocalDate e = LocalDate.parse(end);
 
-            // 여기서도 서울 시간대 기준!
             LocalDateTime startTime = s.atStartOfDay(SEOUL).toLocalDateTime();
             LocalDateTime endTime   = e.plusDays(1).atStartOfDay(SEOUL).toLocalDateTime();
 
@@ -90,16 +88,64 @@ public class TouristApiController {
     }
 
 
-    // ------------------------- [ 삭제 ] -------------------------
+    // ------------------------- [ 관리자 삭제 ] -------------------------
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteTourist(@PathVariable UUID id, HttpSession session) {
         Guide loginGuide = (Guide) session.getAttribute("loginGuide");
         if (loginGuide == null || !"admin".equals(loginGuide.getLoginId())) {
             return ResponseEntity.status(403).body("권한 없음");
         }
+        touristRepository.deleteById(id);
+        return ResponseEntity.ok().build();
+    }
+
+
+    // ------------------------- [ 가이드 본인 삭제 ] -------------------------
+    // guideId를 파라미터로 받아 ownership 체크 (세션 detach 문제 회피)
+    @DeleteMapping("/my/{id}")
+    public ResponseEntity<?> deleteMyTourist(
+            @PathVariable UUID id,
+            @RequestParam UUID guideId) {
+
+        Tourist tourist = touristRepository.findById(id).orElse(null);
+        if (tourist == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (tourist.getGuide() == null ||
+                !tourist.getGuide().getId().equals(guideId)) {
+            return ResponseEntity.status(403).body("권한 없음");
+        }
 
         touristRepository.deleteById(id);
         return ResponseEntity.ok().build();
+    }
+
+
+    // ------------------------- [ 가이드 본인 수정 ] -------------------------
+    @PutMapping("/my/{id}")
+    public ResponseEntity<?> updateMyTourist(
+            @PathVariable UUID id,
+            @RequestParam UUID guideId,
+            @RequestBody TouristUpdateRequest request) {
+
+        Tourist tourist = touristRepository.findById(id).orElse(null);
+        if (tourist == null) {
+            return ResponseEntity.notFound().build();
+        }
+        if (tourist.getGuide() == null ||
+                !tourist.getGuide().getId().equals(guideId)) {
+            return ResponseEntity.status(403).body("권한 없음");
+        }
+
+        if (request.name() != null && !request.name().isBlank()) {
+            tourist.setName(request.name());
+        }
+        if (request.birth() != null) {
+            tourist.setBirth(request.birth());
+        }
+
+        touristRepository.save(tourist);
+        return ResponseEntity.ok(TouristDto.from(tourist));
     }
 
 
@@ -111,20 +157,18 @@ public class TouristApiController {
             return ResponseEntity.badRequest().body("가이드 정보가 없습니다.");
         }
 
-        UUID guideId;
+        UUID guideUUID;
         try {
-            guideId = UUID.fromString(request.guideId());
+            guideUUID = UUID.fromString(request.guideId());
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body("잘못된 가이드 ID 형식입니다.");
         }
 
-        Guide guide = guideRepository.findById(guideId)
-                .orElse(null);
+        Guide guide = guideRepository.findById(guideUUID).orElse(null);
         if (guide == null) {
             return ResponseEntity.badRequest().body("존재하지 않는 가이드입니다.");
         }
 
-        // 서울 시간으로 정확히 저장
         LocalDateTime seoulNow = LocalDateTime.now(SEOUL);
 
         Tourist tourist = Tourist.builder()
