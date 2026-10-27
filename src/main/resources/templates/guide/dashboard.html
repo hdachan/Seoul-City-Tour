@@ -36,7 +36,7 @@
         .alert { border-radius: 12px; }
         .print-header-table, .print-header-table th, .print-header-table td { border: 1px solid #888; border-collapse: collapse; }
 
-        /* 나라 선택 팝업 */
+        /* 수정 모달 */
         .country-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; }
         .country-modal-overlay.show { display:flex; }
         .country-modal { background:white; border-radius:20px; padding:28px 24px; width:320px; max-width:90vw; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
@@ -67,21 +67,13 @@
                    oninput="this.value=this.value.replace(/\D/g,'')">
             <div class="form-text text-muted">숫자 8자리 (예: 19900101)</div>
         </div>
+        <div class="mb-3">
+            <label class="form-label small fw-bold">국가 (Country)</label>
+            <select class="form-select" id="editCountry"></select>
+        </div>
         <button class="country-btn" style="background:#198754;color:white;border-color:#198754;" onclick="submitEdit()">💾 저장</button>
         <button class="country-btn country-btn-cancel" onclick="closeEditModal()">✕ 취소</button>
         <div id="editAlert" class="mt-2"></div>
-    </div>
-</div>
-
-<!-- 나라 선택 팝업 -->
-<div class="country-modal-overlay" id="countryModal">
-    <div class="country-modal">
-        <h5>🌏 국가 선택</h5>
-        <p class="text-muted small text-center mb-3">엑셀에 적용할 외국인 국가를 선택하세요</p>
-        <button class="country-btn" onclick="downloadExcel('중국')"><span class="flag">🇨🇳</span> 중국 (China)</button>
-        <button class="country-btn" onclick="downloadExcel('일본')"><span class="flag">🇯🇵</span> 일본 (Japan)</button>
-        <button class="country-btn" onclick="downloadExcel('미국')"><span class="flag">🇺🇸</span> 미국 (USA)</button>
-        <button class="country-btn country-btn-cancel" onclick="closeCountryModal()">✕ 취소</button>
     </div>
 </div>
 
@@ -138,6 +130,10 @@
                             <div class="form-text text-muted">숫자 8자리 입력 (예: 19900101)</div>
                         </div>
                         <div class="col-12">
+                            <label class="form-label small fw-bold">국가 (Country)</label>
+                            <select class="form-select" name="country" id="regCountry" required></select>
+                        </div>
+                        <div class="col-12">
                             <button type="submit" class="btn btn-success w-100 btn-register-submit">등록하기</button>
                         </div>
                     </div>
@@ -185,12 +181,18 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.3.4/dist/js/datepicker-full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<!-- 국가 목록 (static/js/countries.js) -->
+<script src="/js/countries.js"></script>
 
 <script th:inline="javascript">
     const guideId   = /*[[${guide.id}]]*/ null;
     const guideName = /*[[${guide.name}]]*/ '가이드';
     const guidePhone = /*[[${guide.phone ?: ''}]]*/ '';
     const guideBirth = /*[[${guide.birth != null ? guide.birth.toString().replace('-','') : ''}]]*/ '';
+
+    // 가이드 행에 들어갈 국가 (고정값)
+    // ※ countries.js 의 option value 표기와 맞춰주세요 (예: '대한민국', 'KR' 등)
+    const GUIDE_COUNTRY = '서울특별시 종로구';
 
     // 서버가 이미 한국 시간(Asia/Seoul) 자체를 LocalDateTime으로 저장하므로
     // 타임존 오프셋을 추가로 더하지 않고 그대로 파싱한다.
@@ -214,11 +216,24 @@
     };
 
 
+    // 관광객이 직접 입력한 값은 HTML에 넣기 전에 반드시 이스케이프
+    function escapeHtml(s) {
+        return s == null ? '' : String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    function findTourist(id) {
+        return currentFilteredData.find(t => t.id === id);
+    }
+
     // ── 수정 모달 ──
-    window.openEditModal = function(id, name, birth) {
+    // 이름 등을 onclick 인자로 넘기면 따옴표(O'Brien)에서 깨지므로 id만 넘기고 데이터에서 찾는다
+    window.openEditModal = function(id) {
+        const t = findTourist(id);
+        if (!t) return;
         document.getElementById('editTouristId').value = id;
-        document.getElementById('editName').value = name;
-        document.getElementById('editBirth').value = (birth || '').replace(/-/g, '');
+        document.getElementById('editName').value = t.name || '';
+        document.getElementById('editBirth').value = (t.birth || '').replace(/-/g, '');
+        document.getElementById('editCountry').value = t.country || '';
         document.getElementById('editAlert').innerHTML = '';
         document.getElementById('editModal').classList.add('show');
     };
@@ -232,6 +247,7 @@
         const id = document.getElementById('editTouristId').value;
         const name = document.getElementById('editName').value.trim();
         const birthRaw = document.getElementById('editBirth').value.trim();
+        const country = document.getElementById('editCountry').value || null;
 
         if (!name) {
             document.getElementById('editAlert').innerHTML = '<div class="alert alert-warning py-1 px-2 small">이름을 입력해주세요.</div>';
@@ -258,7 +274,7 @@
             const res = await fetch(`/api/tourists/my/${id}?guideId=${guideId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, birth })
+                body: JSON.stringify({ name, birth, country })
             });
             if (res.ok) {
                 closeEditModal();
@@ -273,7 +289,8 @@
     };
 
     // ── 삭제 ──
-    window.deleteTourist = async function(id, name) {
+    window.deleteTourist = async function(id) {
+        const name = findTourist(id)?.name || '';
         if (!confirm(`"${name}" 을(를) 삭제하시겠습니까?`)) return;
         try {
             const res = await fetch(`/api/tourists/my/${id}?guideId=${guideId}`, { method: 'DELETE' });
@@ -288,76 +305,56 @@
         }
     };
 
-    // ── 나라 선택 팝업 ──
-    window.openCountryModal = function() {
-        document.getElementById('countryModal').classList.add('show');
-    };
-    window.closeCountryModal = function() {
-        document.getElementById('countryModal').classList.remove('show');
-    };
-    document.getElementById('countryModal').addEventListener('click', function(e) {
-        if (e.target === this) closeCountryModal();
-    });
+    // ── 엑셀 다운로드 (관광객별 저장된 country 사용) ──
+    window.downloadExcel = function() {
+        if (!currentFilteredData.length) {
+            alert('다운로드할 관광객이 없습니다.');
+            return;
+        }
 
-    // ── 엑셀 다운로드 ──
-    window.downloadExcel = function(selectedCountry) {
-        closeCountryModal();
+        const missing = currentFilteredData.filter(t => !t.country).length;
+        if (missing && !confirm(`국가가 없는 관광객이 ${missing}명 있습니다.\n해당 칸을 비우고 다운로드할까요?`)) return;
 
-        const countryCodeMap = { '중국': '86', '일본': '81', '미국': '1' };
-        const countryCode = countryCodeMap[selectedCountry] || '82';
-        const foreignLabel = '외국인';
-
-        // 헤더
         const headers = ['성명', '성별', '생년월일', '휴대폰번호', '국가번호', '내/외국인', '국가/지역', '요금'];
+        const phone = guidePhone.replace(/-/g, '');
 
-        // 1행: 가이드
-        const guideRow = [
-            guideName,
-            '남',
-            guideBirth,
-            guidePhone.replace(/-/g, ''),
-            '82',
-            '외국인',
-            selectedCountry,
-            '가이드'
-        ];
+        // 1행: 가이드 (국가는 한국 고정)
+        const guideRow = [guideName, '남', guideBirth, phone, '82', '내국인', GUIDE_COUNTRY, '가이드'];
 
         // 나머지: 관광객
-        const touristRows = currentFilteredData.map(t => {
-            const gender = (t.gender === 'FEMALE') ? '여' : '남';
-            const birth = (t.birth || '').replace(/-/g, '');
-            return [
-                t.name,
-                gender,
-                birth,
-                guidePhone.replace(/-/g, ''),
-                countryCode,
-                foreignLabel,
-                selectedCountry,
-                '일반'
-            ];
-        });
-
-        const wsData = [headers, guideRow, ...touristRows];
+        const touristRows = currentFilteredData.map(t => [
+            t.name,
+            (t.gender === 'FEMALE') ? '여' : '남',
+            (t.birth || '').replace(/-/g, ''),
+            phone,
+            countryCode(t.country),   // 국가번호
+            '외국인',
+            t.country || '',          // 국가/지역
+            '일반'
+        ]);
 
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        const ws = XLSX.utils.aoa_to_sheet([headers, guideRow, ...touristRows]);
 
-        // 컬럼 너비
         ws['!cols'] = [
             {wch:14}, {wch:6}, {wch:12}, {wch:14},
-            {wch:8}, {wch:10}, {wch:12}, {wch:8}
+            {wch:8}, {wch:10}, {wch:22}, {wch:8}
         ];
 
         XLSX.utils.book_append_sheet(wb, ws, '관광객명단');
 
         const dateStr = currentFilterDate.replace(/-/g, '');
-        XLSX.writeFile(wb, `${guideName}_${dateStr}_${selectedCountry}.xlsx`);
+        XLSX.writeFile(wb, `${guideName}_${dateStr}.xlsx`);
     };
 
     document.addEventListener('DOMContentLoaded', () => {
         const dateInput = document.getElementById('filterDate');
         const printDateLabel = document.getElementById('printDateLabel');
+
+        // 국가 드롭다운 채우기
+        const countryOpts = buildCountryOptions('ko');
+        document.getElementById('regCountry').innerHTML = countryOpts;
+        document.getElementById('editCountry').innerHTML = countryOpts;
 
         new Datepicker(dateInput, { format: 'yyyy-mm-dd', language: 'ko', autohide: true, todayHighlight: true });
         dateInput.value = today;
@@ -388,6 +385,13 @@
             const data = Object.fromEntries(formData);
             data.guideId = guideId + '';
             if (!data.gender) data.gender = 'MALE';
+
+            if (!data.country) {
+                document.getElementById('formAlert').innerHTML =
+                    '<div class="alert alert-warning alert-dismissible fade show">국가를 선택해주세요.<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
+                return;
+            }
+
             if (data.birth && data.birth.length === 8) {
                 const y = parseInt(data.birth.slice(0,4));
                 const m = parseInt(data.birth.slice(4,6));
@@ -452,14 +456,15 @@
                 return `
                     <tr>
                         <td class="fw-bold">${i + 1}</td>
-                        <td class="fw-bold">${t.name}</td>
-                        <td>${t.birth || '-'}</td>
+                        <td class="fw-bold">${escapeHtml(t.name)}</td>
+                        <td>${escapeHtml(t.country) || '-'}</td>
+                        <td>${escapeHtml(t.birth) || '-'}</td>
                         <td class="text-muted small">${timeStr}</td>
                         <td>
                             <button class="btn btn-outline-primary btn-sm py-0 px-2 me-1"
-                                onclick="openEditModal('${t.id}','${t.name}','${t.birth||''}')">✏️</button>
+                                onclick="openEditModal('${t.id}')">✏️</button>
                             <button class="btn btn-outline-danger btn-sm py-0 px-2"
-                                onclick="deleteTourist('${t.id}','${t.name}')">🗑️</button>
+                                onclick="deleteTourist('${t.id}')">🗑️</button>
                         </td>
                     </tr>`;
             }).join('');
@@ -467,7 +472,7 @@
             container.innerHTML = `
                 <div class="table-responsive rounded shadow-sm overflow-hidden">
                     <table class="table table-hover align-middle mb-0">
-                        <thead><tr><th>#</th><th>이름</th><th>생년월일</th><th>등록시간</th><th>관리</th></tr></thead>
+                        <thead><tr><th>#</th><th>이름</th><th>국가</th><th>생년월일</th><th>등록시간</th><th>관리</th></tr></thead>
                         <tbody>${rows}</tbody>
                     </table>
                 </div>`;
@@ -479,7 +484,7 @@
             printDateLabel.innerText = date === today ? '기준일: 오늘' : '기준일: ' + date.replace(/-/g, '. ');
         };
 
-        document.getElementById('btnExcel').onclick = () => openCountryModal();
+        document.getElementById('btnExcel').onclick = () => downloadExcel();
         document.getElementById('btnPrint').onclick = () => setTimeout(() => window.print(), 300);
 
         loadTourists(today);

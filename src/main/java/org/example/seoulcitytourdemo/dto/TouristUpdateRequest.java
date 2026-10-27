@@ -5,5 +5,6 @@ import java.time.LocalDate;
 
 public record TouristUpdateRequest(
         String name,
-        LocalDate birth
+        LocalDate birth,
+        String country
 ) {}

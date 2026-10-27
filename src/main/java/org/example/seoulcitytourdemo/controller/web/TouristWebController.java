@@ -1,6 +1,5 @@
 package org.example.seoulcitytourdemo.controller.web;
 
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.example.seoulcitytourdemo.entity.Guide;
 import org.example.seoulcitytourdemo.service.GuideService;
@@ -20,13 +19,12 @@ public class TouristWebController {
 
     private final GuideService guideService;  // 추가!
 
+    // 관광객 폼은 URL의 guideId만 사용하므로 로그인 세션은 건드리지 않는다
+    // (세션을 지우면 같은 브라우저에서 폼을 연 가이드/관리자가 로그아웃됨)
     @GetMapping("/register")
     public String registerForm(
             @RequestParam(required = false) UUID guideId,
-            HttpSession session,
             Model model) {
-
-        session.removeAttribute("loginGuide");  // 로그인 세션 강제 제거
 
         if (guideId == null) {
             return "redirect:/";

@@ -19,6 +19,35 @@
         .person-card .person-title { font-weight:700; color:#198754; margin-bottom:12px; font-size:0.95rem; }
         .count-select-wrap { background:#eff6ff; border-radius:14px; padding:16px; margin-bottom:20px; }
 
+        /* 여권 일치 안내 배너 */
+        .passport-notice {
+            background: linear-gradient(135deg, #fff7ed, #fef2f2);
+            border: 2px solid #f59e0b;
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: noticePulse 2s ease-in-out infinite;
+        }
+        .passport-notice .icon { font-size: 1.8rem; line-height: 1; flex-shrink: 0; }
+        .passport-notice .text-main {
+            font-weight: 800;
+            color: #b45309;
+            font-size: 1.02rem;
+            margin-bottom: 2px;
+        }
+        .passport-notice .text-sub {
+            color: #92400e;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        @keyframes noticePulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.25); }
+            50% { box-shadow: 0 0 0 6px rgba(245,158,11,0); }
+        }
+
         /* 완료 팝업 */
         .success-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center; }
         .success-overlay.show { display:flex; }
@@ -49,6 +78,14 @@
 
     <div class="card-body p-4">
 
+        <!-- 여권 일치 안내 -->
+        <div class="passport-notice">
+            <div class="icon">🛂</div>
+            <div>
+                <div class="text-main">Name &amp; Birthday must match your PASSPORT exactly</div>
+            </div>
+        </div>
+
         <!-- 인원수 선택 -->
         <div class="count-select-wrap">
             <label class="form-label mb-2">👥 Number of People</label>
@@ -77,6 +114,9 @@
     </div>
 </div>
 
+<!-- 국가 목록 (static/js/countries.js) -->
+<script src="/js/countries.js"></script>
+
 <script>
     const urlParams = new URLSearchParams(location.search);
     let isSubmitting = false;
@@ -91,13 +131,21 @@
                     </label>
                     <input type="text" class="form-control person-name" placeholder="ex. Amy Park" required>
                 </div>
-                <div class="mb-1">
+                <div class="mb-3">
                     <label class="form-label">
                         <span class="field-num">2.</span> Birthday (ex. yyyymmdd) <span class="text-danger">*</span>
                     </label>
                     <input type="text" class="form-control person-birth"
                            placeholder="ex. 19880121" maxlength="8" inputmode="numeric" required>
                     <div class="form-text">Please enter 8 digits &nbsp;(YYYYMMDD)</div>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label">
+                        <span class="field-num">3.</span> Country <span class="text-danger">*</span>
+                    </label>
+                    <select class="form-select person-country" required>
+                        ${buildCountryOptions()}
+                    </select>
                 </div>
             </div>`;
     }
@@ -153,11 +201,13 @@
 
         const nameInputs = document.querySelectorAll('.person-name');
         const birthInputs = document.querySelectorAll('.person-birth');
+        const countryInputs = document.querySelectorAll('.person-country');
         const people = [];
 
         for (let i = 0; i < nameInputs.length; i++) {
             const name = nameInputs[i].value.trim();
             const birthRaw = birthInputs[i].value.trim();
+            const country = countryInputs[i].value;
             const num = i + 1;
 
             if (!name) {
@@ -181,11 +231,18 @@
                 birthInputs[i].focus();
                 return;
             }
+            if (!country) {
+                document.getElementById('result').innerHTML =
+                    `<div class="alert alert-warning text-center">Please select the country for Guest ${num}.</div>`;
+                countryInputs[i].focus();
+                return;
+            }
 
             people.push({
                 guideId,
                 name,
                 birth: birthRaw.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
+                country,
                 gender: 'MALE'
             });
         }

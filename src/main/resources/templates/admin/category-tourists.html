@@ -58,6 +58,11 @@
     document.title = /*[[${guideName}]]*/ + ' 가이드님 - ' + categoryName;
     document.getElementById('dateFilter').valueAsDate = new Date();
 
+    // 관광객이 직접 입력한 값은 HTML에 넣기 전에 반드시 이스케이프
+    function escapeHtml(s) {
+        return s == null ? '' : String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
     async function loadTourists() {
         const date = document.getElementById('dateFilter').value;
         if (!date) return alert('날짜를 선택하세요');
@@ -72,9 +77,9 @@
             : tourists.map((t, i) => `
                 <tr>
                     <td>${i + 1}</td>
-                    <td><strong>${t.name}</strong></td>
-                    <td>${t.birth || '-'}</td>
-                    <td>${t.phone || '-'}</td>
+                    <td><strong>${escapeHtml(t.name)}</strong></td>
+                    <td>${escapeHtml(t.birth) || '-'}</td>
+                    <td>${escapeHtml(t.phone) || '-'}</td>
                     <td>${t.nationality || '-'}</td>
                     <td>${t.gender === 'MALE' ? 'M' : 'F'}</td>
                 </tr>

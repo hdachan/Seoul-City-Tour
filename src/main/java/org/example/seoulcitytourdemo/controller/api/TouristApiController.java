@@ -143,6 +143,9 @@ public class TouristApiController {
         if (request.birth() != null) {
             tourist.setBirth(request.birth());
         }
+        if (request.country() != null && !request.country().isBlank()) {
+            tourist.setCountry(request.country());
+        }
 
         touristRepository.save(tourist);
         return ResponseEntity.ok(TouristDto.from(tourist));

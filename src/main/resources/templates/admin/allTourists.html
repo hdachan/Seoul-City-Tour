@@ -243,24 +243,25 @@
 
             const name = c[1].querySelector('strong')?.textContent.trim() || c[1].textContent.trim();
             const birth = c[2].textContent.trim() === '-' ? '' : c[2].textContent.trim();
+            const time = c[6].textContent.trim() === '-' ? '' : c[6].textContent.trim();
 
-            (groups[dateKey] ??= []).push({ name, birth });
+            (groups[dateKey] ??= []).push({ name, birth, time });
         });
 
-        const headers = ['NAME', 'Date of Birth'];
+        const headers = ['NAME', 'Date of Birth', '등록시간'];
 
         const aoa = [];
         Object.keys(groups).sort().forEach(dateKey => {
             aoa.push([dateKey]);
             aoa.push(headers);
             groups[dateKey].forEach(d => {
-                aoa.push([d.name, d.birth]);
+                aoa.push([d.name, d.birth, d.time]);
             });
             aoa.push([]); // 날짜 그룹 사이 빈 줄
         });
 
         const ws = XLSX.utils.aoa_to_sheet(aoa);
-        ws['!cols'] = [{wch:22}, {wch:15}];
+        ws['!cols'] = [{wch:22}, {wch:15}, {wch:16}];
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, '명단');
