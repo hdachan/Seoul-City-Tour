@@ -104,7 +104,7 @@ const COUNTRIES = [
 ].map(([ko, en, code, native]) => ({ ko, en, code, native }));
 
 // 상단 "Popular" 그룹에 보여줄 나라 (한글명 기준)
-const POPULAR_COUNTRIES = ['미국', '일본', '중국', '대만', '홍콩', '베트남', '타이', '필리핀'];
+const POPULAR_COUNTRIES = ['영국', '싱가포르', '필리핀', '홍콩', '베트남', '캐나다', '미국', '일본', '중국', '대만', '타이'];
 
 // 한글명 -> 국가 객체
 function findCountry(ko) {
