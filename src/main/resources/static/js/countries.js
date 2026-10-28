@@ -1,9 +1,10 @@
 // src/main/resources/static/js/countries.js
 // [한글명(DB 저장값), 영문명, 국가번호, 현지어(자국어) 이름]
 // 드롭박스는 "현지어 (한글)" 형태로 표시됩니다. DB에는 한글명이 그대로 저장됩니다.
-// ※ DMZ 평화관광(dmz.paju.go.kr) 출입신청서 국가 선택박스와 동일한 목록 (대한민국 제외 97개)
+// ※ DMZ 평화관광(dmz.paju.go.kr) 출입신청서 국가 선택박스와 동일한 목록 (대한민국 포함 98개)
 //   엑셀 업로드 시 국가번호가 이 목록에 없으면 업로드가 거부되므로, 추가/수정 시 DMZ 목록과 맞춰야 합니다.
 const COUNTRIES = [
+    ["대한민국", "Korea, Republic of", "82", "대한민국"],
     ["미국", "United States", "1", "United States"],
     ["일본", "Japan", "81", "日本"],
     ["중국", "China", "86", "中国"],
@@ -104,7 +105,7 @@ const COUNTRIES = [
 ].map(([ko, en, code, native]) => ({ ko, en, code, native }));
 
 // 상단 "Popular" 그룹에 보여줄 나라 (한글명 기준)
-const POPULAR_COUNTRIES = ['영국', '싱가포르', '필리핀', '홍콩', '베트남', '캐나다', '미국', '일본', '중국', '대만', '타이'];
+const POPULAR_COUNTRIES = ['영국', '싱가포르', '필리핀', '홍콩', '베트남', '캐나다', '미국', '일본', '중국', '대만', '타이', '대한민국'];
 
 // 한글명 -> 국가 객체
 function findCountry(ko) {

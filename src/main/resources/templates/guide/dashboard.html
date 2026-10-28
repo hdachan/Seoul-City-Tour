@@ -321,17 +321,20 @@
         // 1행: 가이드 (국가는 한국 고정)
         const guideRow = [guideName, '남', guideBirth, phone, '82', '내국인', GUIDE_COUNTRY, '가이드'];
 
-        // 나머지: 관광객
-        const touristRows = currentFilteredData.map(t => [
-            t.name,
-            (t.gender === 'FEMALE') ? '여' : '남',
-            (t.birth || '').replace(/-/g, ''),
-            phone,
-            countryCode(t.country),   // 국가번호
-            '외국인',
-            t.country || '',          // 국가/지역
-            '일반'
-        ]);
+        // 나머지: 관광객 (대한민국은 내국인 → 국가/지역 칸에 가이드와 같은 시·구 지역)
+        const touristRows = currentFilteredData.map(t => {
+            const isKorean = t.country === '대한민국';
+            return [
+                t.name,
+                (t.gender === 'FEMALE') ? '여' : '남',
+                (t.birth || '').replace(/-/g, ''),
+                phone,
+                countryCode(t.country),                          // 국가번호
+                isKorean ? '내국인' : '외국인',
+                isKorean ? GUIDE_COUNTRY : (t.country || ''),    // 국가/지역
+                '일반'
+            ];
+        });
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.aoa_to_sheet([headers, guideRow, ...touristRows]);
