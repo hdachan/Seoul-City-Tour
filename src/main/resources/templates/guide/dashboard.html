@@ -329,7 +329,7 @@
                 (t.gender === 'FEMALE') ? '여' : '남',
                 (t.birth || '').replace(/-/g, ''),
                 phone,
-                countryCode(t.country),                          // 국가번호
+                '82',                                            // 국가번호 = 휴대폰 국가번호 (휴대폰 칸이 가이드 한국 번호이므로 82)
                 isKorean ? '내국인' : '외국인',
                 isKorean ? GUIDE_COUNTRY : (t.country || ''),    // 국가/지역
                 '일반'
