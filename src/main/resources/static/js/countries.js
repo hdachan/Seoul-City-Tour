@@ -264,7 +264,46 @@ function countryCode(ko) {
 // lang: 'native' -> "France (프랑스)"  (기본값, 현지어 + 한글)
 //       'en'     -> "United States (미국)"
 //       'ko'     -> "미국 (United States)"
-// query: 검색어 (한글명 / 영문명 / 현지어 어디에 포함돼도 일치, 대소문자 무시)
+// 검색용 별칭 (화면 표시/엑셀에는 쓰지 않음). 키는 COUNTRIES 의 한글명과 같아야 함
+const COUNTRY_ALIASES = {
+    '대한민국': ['south korea', 'republic of korea', '한국', '남한'],
+    '북한': ['north korea', 'dprk'],
+    '미국': ['usa', 'america', 'united states of america', '美国', '美國', 'アメリカ'],
+    '영국': ['uk', 'england', 'britain', 'great britain', 'scotland', 'wales', 'northern ireland'],
+    '베트남': ['vietnam'],
+    '중국': ['prc', "people's republic of china", '中國'],
+    '대만': ['taiwan', '台灣', '台湾', 'roc'],
+    '마카오': ['macau', '澳門', '澳门'],
+    '타이': ['태국', 'thai'],
+    '오스트레일리아': ['호주', 'aussie'],
+    '뉴질랜드': ['nz'],
+    '아랍 에리레이트': ['uae', 'emirates', 'dubai', '아랍에미리트'],
+    '체코': ['czechia'],
+    '네델란드': ['holland', '네덜란드'],
+    '터키': ['튀르키예'],
+    '이란': ['persia'],
+    '라오스': ['laos'],
+    '미얀마': ['burma'],
+    '콩고 민주 공화국': ['drc', 'dr congo'],
+    '코트디부아르': ['ivory coast'],
+    '스와질랜드': ['eswatini'],
+    '마케도니아': ['north macedonia', '북마케도니아'],
+    '동 티모르': ['timor-leste'],
+    '바티칸 시국': ['vatican'],
+    '남아프리카 공화국': ['rsa', '남아공'],
+    '사우디 아라비아': ['ksa'],
+    '벨로루시': ['벨라루스'],
+    '아제르바이젠 공화국': ['아제르바이잔'],
+    '니카라과이': ['니카라과'],
+    '벨리제': ['벨리즈'],
+    '챠드': ['차드'],
+    '자마이카': ['자메이카'],
+    '알제리아': ['알제리'],
+    '시리안 아랍': ['시리아', 'syria'],
+    '리위니옹': ['레위니옹'],
+};
+
+// query: 검색어 (한글명 / 영문명 / 현지어 / 별칭 어디에 포함돼도 일치, 대소문자 무시)
 function buildCountryOptions(lang = 'native', query = '') {
     const label = c => {
         if (lang === 'ko') return `${c.ko} (${c.en})`;
@@ -281,7 +320,8 @@ function buildCountryOptions(lang = 'native', query = '') {
 
     const q = query.trim().toLowerCase();
     if (q) {
-        const matches = sorted.filter(c => [c.ko, c.en, c.native].some(s => s.toLowerCase().includes(q)));
+        const matches = sorted.filter(c =>
+            [c.ko, c.en, c.native, ...(COUNTRY_ALIASES[c.ko] || [])].some(s => s.toLowerCase().includes(q)));
         if (!matches.length) {
             return `<option value="" disabled selected>${lang === 'ko' ? '검색 결과 없음' : 'No results'}</option>`;
         }
