@@ -264,7 +264,8 @@ function countryCode(ko) {
 // lang: 'native' -> "France (프랑스)"  (기본값, 현지어 + 한글)
 //       'en'     -> "United States (미국)"
 //       'ko'     -> "미국 (United States)"
-function buildCountryOptions(lang = 'native') {
+// query: 검색어 (한글명 / 영문명 / 현지어 어디에 포함돼도 일치, 대소문자 무시)
+function buildCountryOptions(lang = 'native', query = '') {
     const label = c => {
         if (lang === 'ko') return `${c.ko} (${c.en})`;
         if (lang === 'en') return `${c.en} (${c.ko})`;
@@ -277,6 +278,16 @@ function buildCountryOptions(lang = 'native') {
         return a.native.localeCompare(b.native);
     });
     const placeholder = lang === 'ko' ? '국가 선택' : 'Select country';
+
+    const q = query.trim().toLowerCase();
+    if (q) {
+        const matches = sorted.filter(c => [c.ko, c.en, c.native].some(s => s.toLowerCase().includes(q)));
+        if (!matches.length) {
+            return `<option value="" disabled selected>${lang === 'ko' ? '검색 결과 없음' : 'No results'}</option>`;
+        }
+        return `<option value="" disabled selected>${placeholder} (${matches.length})</option>` + matches.map(opt).join('');
+    }
+
     return `
         <option value="" disabled selected>${placeholder}</option>
         <optgroup label="${lang === 'ko' ? '자주 선택' : 'Popular'}">
@@ -285,4 +296,38 @@ function buildCountryOptions(lang = 'native') {
         <optgroup label="${lang === 'ko' ? '전체' : 'All countries'}">
             ${sorted.map(opt).join('')}
         </optgroup>`;
+}
+// <select> 위에 국가 검색창을 붙인다. 입력할 때마다 목록을 다시 만들고,
+// 결과가 1개면 바로 선택한다.
+function attachCountrySearch(select, lang = 'native') {
+    const input = document.createElement('input');
+    input.type = 'search';
+    input.className = 'form-control mb-2';
+    input.autocomplete = 'off';
+    input.placeholder = lang === 'ko' ? '🔍 국가 검색 (예: 영국, Japan)' : '🔍 Search country (e.g. Korea, 中国)';
+    select.before(input);
+    select.innerHTML = buildCountryOptions(lang);
+
+    // 폼 안에 있으므로 Enter로 제출되지 않게 막는다
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+    input.addEventListener('input', () => {
+        const prev = select.value;
+        select.innerHTML = buildCountryOptions(lang, input.value);
+        const values = [...select.options].map(o => o.value).filter(Boolean);
+        if (prev && values.includes(prev)) select.value = prev;
+        else if (values.length === 1) select.value = values[0];
+    });
+
+    select.countrySearch = { input, lang };
+    return input;
+}
+
+// 검색어를 지우고 전체 목록으로 되돌린 뒤 value 를 선택한다
+function resetCountrySearch(select, value = '') {
+    const s = select.countrySearch;
+    if (s) {
+        s.input.value = '';
+        select.innerHTML = buildCountryOptions(s.lang);
+    }
+    select.value = value || '';
 }

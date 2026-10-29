@@ -233,7 +233,7 @@
         document.getElementById('editTouristId').value = id;
         document.getElementById('editName').value = t.name || '';
         document.getElementById('editBirth').value = (t.birth || '').replace(/-/g, '');
-        document.getElementById('editCountry').value = t.country || '';
+        resetCountrySearch(document.getElementById('editCountry'), t.country);
         document.getElementById('editAlert').innerHTML = '';
         document.getElementById('editModal').classList.add('show');
     };
@@ -355,9 +355,8 @@
         const printDateLabel = document.getElementById('printDateLabel');
 
         // 국가 드롭다운 채우기
-        const countryOpts = buildCountryOptions('ko');
-        document.getElementById('regCountry').innerHTML = countryOpts;
-        document.getElementById('editCountry').innerHTML = countryOpts;
+        attachCountrySearch(document.getElementById('regCountry'), 'ko');
+        attachCountrySearch(document.getElementById('editCountry'), 'ko');
 
         new Datepicker(dateInput, { format: 'yyyy-mm-dd', language: 'ko', autohide: true, todayHighlight: true });
         dateInput.value = today;
@@ -417,6 +416,7 @@
                     document.getElementById('formAlert').innerHTML =
                         '<div class="alert alert-success alert-dismissible fade show">등록 완료!<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>';
                     e.target.reset();
+                    resetCountrySearch(document.getElementById('regCountry'));
                     loadTourists(dateInput.value || today);
                 } else {
                     const errorText = await res.text();
